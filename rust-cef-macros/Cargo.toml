@@ -9,4 +9,3 @@ proc-macro = true
 [dependencies]
 syn = "1.0.33"
 quote = "1.0.7"
-rust-cef = "0.0.1"

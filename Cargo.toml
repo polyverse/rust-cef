@@ -2,5 +2,13 @@
 name = "rust-cef"
 version = "0.0.1"
 edition = "2018"
+license-file = "LICENSE"
+readme = "README.md"
+authors = "Archis Gore"
+repository = "https://github.com/polyverse/rust-cef"
+description = """Trait to convert a Rust item into an ArcSight Common Event Format string."""
 
-[lib]
+[workspace]
+members = [
+    "rust-cef-macros"
+]
