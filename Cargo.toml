@@ -1,6 +1,6 @@
-[workspace]
+[package]
+name = "rust-cef"
+version = "0.0.1"
+edition = "2018"
 
-members = [
-    "rust-cef",
-    "rust-cef-macros"
-]
+[lib]

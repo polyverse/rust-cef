@@ -16,18 +16,16 @@ mod test {
 
     #[derive(Debug)]
     enum CefTestError {
-        ExampleCase
+        ExampleCase,
     }
-    impl Error for CefTestError{}
+    impl Error for CefTestError {}
     impl Display for CefTestError {
         fn fmt(&self, f: &mut Formatter) -> FmtResult {
             write!(f, "CefTestError: {}", self)
         }
     }
 
-
-    struct Example {
-    }
+    struct Example {}
 
     impl ToCef<CefTestError> for Example {
         fn to_cef(&self) -> CefResult<CefTestError> {
@@ -37,7 +35,7 @@ mod test {
 
     #[test]
     fn test_impl() {
-        let example = Example{};
+        let example = Example {};
         let result = example.to_cef();
         assert!(result.is_err())
     }
