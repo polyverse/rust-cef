@@ -18,16 +18,13 @@ pub fn writable_template_derive(input: TokenStream) -> TokenStream {
     let generics = input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let expanded = quote! {
+    let to_cef_impl = quote! {
         impl #impl_generics rust_cef::ToCef for #name #ty_generics #where_clause {
-            fn write(&self, dest: &::std::path::Path) -> ::std::io::Result<()> {
-                let mut file = ::std::io::BufWriter::new(::std::fs::File::create(dest)?);
-                file.write(self.render().unwrap().trim().as_bytes())?;
-
-                Ok(())
+            fn to_cef(&self) -> rust_cef::CefResult {
+                Ok("".to_owned())
             }
         }
     };
 
-    TokenStream::from(expanded)
+    TokenStream::from(to_cef_impl)
 }

@@ -1,5 +1,5 @@
 [package]
-name = "rust-cef-macros"
+name = "rust-cef-derive"
 version = "0.0.1"
 edition = "2018"
 license-file = "LICENSE"
@@ -18,3 +18,6 @@ proc-macro = true
 [dependencies]
 syn = "1.0.33"
 quote = "1.0.7"
+
+# Always keep this in sync within the repo
+rust-cef = { path = "../" }

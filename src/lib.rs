@@ -1,9 +1,23 @@
 use std::error::Error;
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
-type CefResult<T> = Result<String, T>;
+#[derive(Debug, PartialEq)]
+pub enum CefConversionError {
+    Unexpected(String),
+}
+impl Error for CefConversionError {}
+impl Display for CefConversionError {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            CefConversionError::Unexpected(message) => write!(f, "CefConversionError::Unexpected {}", message),
+        }
+    }
+}
 
-pub trait ToCef<T: Error> {
-    fn to_cef(&self) -> CefResult<T>;
+pub type CefResult = Result<String, CefConversionError>;
+
+pub trait ToCef {
+    fn to_cef(&self) -> CefResult;
 }
 
 /********************************************************************************************** */
@@ -12,24 +26,11 @@ pub trait ToCef<T: Error> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fmt::{Display, Formatter, Result as FmtResult};
-
-    #[derive(Debug)]
-    enum CefTestError {
-        ExampleCase,
-    }
-    impl Error for CefTestError {}
-    impl Display for CefTestError {
-        fn fmt(&self, f: &mut Formatter) -> FmtResult {
-            write!(f, "CefTestError: {}", self)
-        }
-    }
-
     struct Example {}
 
-    impl ToCef<CefTestError> for Example {
-        fn to_cef(&self) -> CefResult<CefTestError> {
-            Err(CefTestError::ExampleCase)
+    impl ToCef for Example {
+        fn to_cef(&self) -> CefResult {
+            Err(CefConversionError::Unexpected("Hope this works".to_owned()))
         }
     }
 
@@ -37,6 +38,7 @@ mod test {
     fn test_impl() {
         let example = Example {};
         let result = example.to_cef();
-        assert!(result.is_err())
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), CefConversionError::Unexpected("Hope this works".to_owned()));
     }
 }

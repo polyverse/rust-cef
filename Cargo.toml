@@ -15,5 +15,5 @@ as well as macros to annotate members to map to various CEF headers or key-value
 
 [workspace]
 members = [
-    "rust-cef-macros"
+    "rust-cef-derive"
 ]
