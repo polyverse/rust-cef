@@ -1,11 +1,7 @@
 use rust_cef_macro::ToCef;
 
 #[derive(ToCef)]
-struct Example {
-
-}
+struct Example {}
 
 #[cfg(test)]
-mod test {
-
-}
+mod test {}

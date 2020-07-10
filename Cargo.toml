@@ -4,9 +4,14 @@ version = "0.0.1"
 edition = "2018"
 license-file = "LICENSE"
 readme = "README.md"
-authors = "Archis Gore"
+authors = ["Archis Gore <archis@polyverse.com>"]
 repository = "https://github.com/polyverse/rust-cef"
-description = """Trait to convert a Rust item into an ArcSight Common Event Format string."""
+description = """Trait to serialize/convert/map a Rust item into an ArcSight Common Event
+Format string. This trait enables logging libraries and frameworks that may wish to integrate
+with standardized monitoring tools to be able to do so.
+
+A sub-package provides macros to derive the trait implementation for any struct
+as well as macros to annotate members to map to various CEF headers or key-value pairs."""
 
 [workspace]
 members = [
