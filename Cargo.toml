@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "rust-cef",
+    "rust-cef-macros"
+]
