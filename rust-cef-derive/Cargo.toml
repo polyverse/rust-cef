@@ -18,6 +18,8 @@ proc-macro = true
 [dependencies]
 syn = "1.0.33"
 quote = "1.0.7"
+proc-macro2 = "1.0.18"
+lazy_static = "1.4.0"
 
 # Always keep this in sync within the repo
-rust-cef = { path = "../" }
+rust-cef = "0.0.1"

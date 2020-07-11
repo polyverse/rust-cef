@@ -8,8 +8,14 @@ struct Example1 {}
 #[derive(ToCef)]
 struct Example2 {}
 
+#[derive(ToCef)]
+#[cef_fixed_headers()]
+struct RealStruct {
+
+}
+
 #[test]
-fn test_example_to_cef() {
+fn test_derive_to_cef() {
     let example1 = Example1 {};
     let _result = example1.to_cef();
 
