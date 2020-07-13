@@ -5,6 +5,7 @@ edition = "2018"
 license-file = "LICENSE"
 readme = "README.md"
 authors = ["Archis Gore <archis@polyverse.com>"]
+autotests = false
 repository = "https://github.com/polyverse/rust-cef/rust-cef-macros"
 description = """Macros to derive the ToCef trait implementation for any struct
 as well as macros to annotate members to map to various CEF headers or key-value pairs.
@@ -22,3 +23,11 @@ proc-macro2 = "1.0.18"
 
 # Always keep this in sync within the repo
 rust-cef = {path = "../"} # "0.0.2"
+
+[[test]]
+name = "tests"
+path = "tests/test.rs"
+
+[dev-dependencies]
+# https://github.com/dtolnay/trybuild
+trybuild = { version = "1.0", features = ["diff"] }

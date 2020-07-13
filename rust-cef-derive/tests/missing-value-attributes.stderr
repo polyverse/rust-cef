@@ -1,0 +1,5 @@
+error: When deriving trait CefHeaderVersion, no attribute was found to define a fixed value for it (i.e. #[cef_header_version_fixed(value)])
+  --> $DIR/missing-value-attributes.rs:15:1
+   |
+15 | struct MissingValueAttributes {}
+   | ^^^^^^
