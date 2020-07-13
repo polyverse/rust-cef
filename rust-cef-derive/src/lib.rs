@@ -4,16 +4,41 @@ extern crate proc_macro2;
 extern crate quote;
 #[macro_use]
 extern crate syn;
+#[macro_use]
+extern crate lazy_static;
 
-use crate::proc_macro::TokenStream;
-use std::convert::From;
+use crate::proc_macro::{TokenStream};
+use syn::{DeriveInput, Attribute, AttributeArgs, Meta, Error as SynError, Lit, MetaNameValue, NestedMeta};
 use syn::spanned::Spanned;
-use syn::{Attribute, DeriveInput, Error as SynError};
+use std::convert::{From};
+use inflections::case::to_snake_case;
 
-type DeriveResult = Result<TokenStream, TokenStream>;
+const CEF_ALLOWED_HEADERS: &[&str] = &[
+    "Version",
+    "DeviceVendor",
+    "DeviceProduct",
+    "DeviceVersion",
+    "DeviceEventClassID",
+    "Name",
+    "Severity"
+];
+
+lazy_static! {
+    static ref CEF_ALLOWED_HEADERS_JOINED: String = CEF_ALLOWED_HEADERS.join(",");
+    static ref CEF_INVALID_HEADER: String = ["header name should be one of the following:", CEF_ALLOWED_HEADERS_JOINED.as_str()].join(" ");
+
+    static ref CEF_FIXED_HEADERS_USAGE: String = "'cef_fixed_headers' macro expects fixed headers provided in the following syntax: #[cef_fixed_headers(header1 = \"value1\", header2 = \"value2\", ...)] ".to_owned();
+    static ref CEF_FIXED_HEADERS_REDUNDANT: String = ["'cef_fixed_headers' specifies no fixed header values. Remove it or provide values.", CEF_FIXED_HEADERS_USAGE.as_str()].join(" ");
+    static ref CEF_FIXED_HEADERS_VALUE_MUST_BE_STRING: String = ["'cef_fixed_headers' fixed header values must be strings.", CEF_FIXED_HEADERS_USAGE.as_str()].join(" ");
+
+    static ref CEF_HEADER_USAGE: String = "'cef_header' macro expects header name provided in the following syntax: #[cef_header(header_name)] ".to_owned();
+    static ref CEF_HEADER_REDUNDANT: String = ["'cef_header' macro is redundant since no header name is provided.", CEF_HEADER_USAGE.as_str()].join(" ");
+    static ref CEF_HEADER_ONLY_ONE: String = ["'cef_header' macro has more than one header name provided. A field can only be converted into one header.", CEF_HEADER_USAGE.as_str()].join(" ");
+
+}
 
 #[proc_macro_derive(ToCef)]
-pub fn to_cef_derive(input: TokenStream) -> TokenStream {
+pub fn derive_to_cef(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     // type name
@@ -23,7 +48,7 @@ pub fn to_cef_derive(input: TokenStream) -> TokenStream {
     let generics = input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    // ToCef can be the default implementation
+    // default implementation is great
     let to_cef_impl = quote! {
         impl #impl_generics rust_cef::ToCef for #name #ty_generics #where_clause {}
     };
@@ -31,215 +56,93 @@ pub fn to_cef_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(to_cef_impl)
 }
 
-#[proc_macro_derive(CefHeaderVersion, attributes(cef_header_version_fixed))]
-pub fn cef_header_version_derive(input: TokenStream) -> TokenStream {
-    cef_header_derive(input, "cef_header_version_fixed", "CefHeaderVersion", "cef_header_version")
+#[proc_macro_attribute]
+pub fn cef_fixed_headers(attr_tokens: TokenStream, item_tokens: TokenStream) -> TokenStream {
+    if attr_tokens.is_empty() {
+        return TokenStreams::from(SynError::new(attr_tokens.span(), CEF_FIXED_HEADERS_REDUNDANT.to_owned()));
+    }
+
+    let attrs = parse_macro_input!(attr_tokens as AttributeArgs);
+    println!("{:#?}", attrs);
+
+    item_tokens
 }
 
-#[proc_macro_derive(CefHeaderDeviceVendor, attributes(cef_header_device_vendor_fixed))]
-pub fn cef_header_device_vendor_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
+fn get_fixed_header_values(attr: Attribute, impl_generics: &syn::ImplGenerics, name: &syn::Ident, ty_generics: &syn::TypeGenerics, where_clause: &syn::WhereClause) -> (proc_macro2::TokenStream, bool) {
+    match attr.parse_meta() {
+        Ok(meta) => {
+            match meta {
+                Meta::NameValue(nv) => {
+                    get_fixed_header_value(nv, impl_generics, name, ty_generics, where_clause)
+                },
+                Meta::List(metalist) => {
+                    if metalist.nested.is_empty() {
+                        return (SynError::new(metalist.span(), CEF_FIXED_HEADERS_REDUNDANT.as_str()).to_compile_error(), true)
+                    }
 
-    // type name
-    let name = &input.ident;
+                    let mut fixed_header_traits: Vec<proc_macro2::TokenStream> = vec![];
+                    for nested_meta in metalist.nested {
+                        match nested_meta {
+                            NestedMeta::Meta(m) => match m {
+                                Meta::NameValue(nv) => {
+                                    let (fixed_header_trait, compile_error) = get_fixed_header_value(nv, impl_generics, name, ty_generics, where_clause);
+                                    if compile_error {
+                                        return (fixed_header_trait, compile_error);
+                                    }
 
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+                                    fixed_header_traits.push(fixed_header_trait);
+                                },
+                                _ => return (SynError::new(m.span(), CEF_FIXED_HEADERS_USAGE.as_str()).to_compile_error(), true),
+                            },
+                            NestedMeta::Lit(nestedlist) => return (SynError::new(nestedlist.span(), CEF_FIXED_HEADERS_USAGE.as_str()).to_compile_error(), true),
+                        }
+                    }
 
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::CefHeaderDeviceVendor for #name #ty_generics #where_clause {
-            fn cef_header_device_vendor(&self) -> rust_cef::CefResult {
-                Ok("polyverse".to_owned())
+                    (quote! {
+                        #(#fixed_header_traits)*
+                    }, false)
+                },
+                _ => return (SynError::new(meta.span(), CEF_FIXED_HEADERS_USAGE.as_str()).to_compile_error(), true),
             }
-        }
-    };
-
-    TokenStream::from(trait_impl)
-}
-
-#[proc_macro_derive(CefHeaderDeviceProduct, attributes(cef_header_device_product_fixed))]
-pub fn cef_header_device_product_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    // type name
-    let name = &input.ident;
-
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::CefHeaderDeviceProduct for #name #ty_generics #where_clause {
-            fn cef_header_device_product(&self) -> rust_cef::CefResult {
-                Ok("zerotect".to_owned())
-            }
-        }
-    };
-
-    TokenStream::from(trait_impl)
-}
-
-#[proc_macro_derive(CefHeaderDeviceVersion, attributes(cef_header_device_version_fixed))]
-pub fn cef_header_device_version_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    // type name
-    let name = &input.ident;
-
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::CefHeaderDeviceVersion for #name #ty_generics #where_clause {
-            fn cef_header_device_version(&self) -> rust_cef::CefResult {
-                Ok("V1".to_owned())
-            }
-        }
-    };
-
-    TokenStream::from(trait_impl)
-}
-
-#[proc_macro_derive(
-    CefHeaderDeviceEventClassID,
-    attributes(cef_header_device_event_class_id_fixed)
-)]
-pub fn cef_header_device_event_class_id_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    // type name
-    let name = &input.ident;
-
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::CefHeaderDeviceEventClassID for #name #ty_generics #where_clause {
-            fn cef_header_device_event_class_id(&self) -> rust_cef::CefResult {
-                Ok("LinuxKernelTrap".to_owned())
-            }
-        }
-    };
-
-    TokenStream::from(trait_impl)
-}
-
-#[proc_macro_derive(CefHeaderName, attributes(cef_header_name_fixed))]
-pub fn cef_header_name_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    // type name
-    let name = &input.ident;
-
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::CefHeaderName for #name #ty_generics #where_clause {
-            fn cef_header_name(&self) -> rust_cef::CefResult {
-                Ok("Linux Kernel Trap".to_owned())
-            }
-        }
-    };
-
-    TokenStream::from(trait_impl)
-}
-
-#[proc_macro_derive(CefHeaderSeverity, attributes(cef_header_severity_fixed))]
-pub fn cef_header_severity_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    // type name
-    let name = &input.ident;
-
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::CefHeaderSeverity for #name #ty_generics #where_clause {
-            fn cef_header_severity(&self) -> rust_cef::CefResult {
-                Ok("10".to_owned())
-            }
-        }
-    };
-
-    TokenStream::from(trait_impl)
-}
-
-#[proc_macro_derive(CefExtensions)]
-pub fn cef_extensions_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    // type name
-    let name = &input.ident;
-
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::CefExtensions for #name #ty_generics #where_clause {
-            fn cef_extensions(&self) -> rust_cef::CefResult {
-                Ok("customField=customValue".to_owned())
-            }
-        }
-    };
-
-    TokenStream::from(trait_impl)
-}
-
-fn cef_header_derive(input: TokenStream, fixed_value_attr: &str, trait_name: &str, method_name: &str, ) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    // Span
-    let span = input.span();
-
-    // type name
-    let name = &input.ident;
-
-    // generics
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    // look in attributes for a fixed value
-    let value_impl = match fixed_value_header(input.attrs, fixed_value_attr) {
-        Some(ts) => ts,
-        None => {
-            println!("No fixed value attribute found: {}", fixed_value_attr);
-            let message = format!(r#"When deriving trait {}, no attribute was found to define a fixed value for it (i.e. #[{}(value)])"#,
-                trait_name, fixed_value_attr);
-            return TokenStream::from(SynError::new(span, message).to_compile_error());
         },
+        Err(e) => return (e.to_compile_error(), true)
+    }
+}
+
+fn get_fixed_header_value(nv: MetaNameValue, impl_generics: &syn::ImplGenerics, name: &syn::Ident, ty_generics: &syn::TypeGenerics, where_clause: &syn::WhereClause) -> (proc_macro2::TokenStream, bool) {
+    let maybe_pathname = nv.path.get_ident();
+    if maybe_pathname.is_none() {
+        return (SynError::new(nv.span(), CEF_INVALID_HEADER.as_str()).to_compile_error(), true)
+    }
+    let pathname = maybe_pathname.unwrap().to_string();
+    if !is_valid_header(&pathname) {
+        return (SynError::new(nv.span(), CEF_INVALID_HEADER.as_str()).to_compile_error(), true)
+    }
+
+    let value = match nv.lit {
+        Lit::Str(s) => s,
+        _ => return (SynError::new(nv.span(), CEF_FIXED_HEADERS_VALUE_MUST_BE_STRING.as_str()).to_compile_error(), true),
     };
 
-    let trait_name_ident = format_ident!("{}", trait_name);
-    let method_name_ident = format_ident!("{}", method_name);
+    let trait_name = format_ident!("CefHeader{}", pathname);
+    let method_name = format_ident!("cef_header_{}", to_snake_case(pathname.to_string().as_str()));
 
-    // ToCef can be the default implementation
-    let trait_impl = quote! {
-        impl #impl_generics rust_cef::#trait_name_ident for #name #ty_generics #where_clause {
-            fn #method_name_ident(&self) -> rust_cef::CefResult {
-                #value_impl
+    (quote! {
+        impl #impl_generics rust_cef::#trait_name for #name #ty_generics #where_clause {
+            fn #method_name() -> rust_cef::CefResult {
+                Ok(#value)
             }
         }
-    };
-
-    TokenStream::from(trait_impl)
+    }, false)
 }
 
-fn fixed_value_header(_attrs: Vec<Attribute>, _header: &str) -> Option<proc_macro2::TokenStream> {
-    None
-}
 
+fn is_valid_header(id: &str) -> bool {
+    for header in CEF_ALLOWED_HEADERS.iter() {
+        if id == *header {
+            return true;
+        }
+    }
+
+    false
+}

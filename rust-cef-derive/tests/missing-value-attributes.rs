@@ -1,17 +1,7 @@
 #[macro_use]
 extern crate rust_cef_derive;
 
-#[derive(
-    CefHeaderVersion,
-    CefHeaderDeviceVendor,
-    CefHeaderDeviceProduct,
-    CefHeaderDeviceVersion,
-    CefHeaderDeviceEventClassID,
-    CefHeaderName,
-    CefHeaderSeverity,
-    CefExtensions,
-
-)]
+#[cef_fixed_headers(Version = "0", Name = "foo")]
 struct MissingValueAttributes {}
 
 fn main() {
