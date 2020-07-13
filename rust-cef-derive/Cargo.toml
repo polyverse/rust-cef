@@ -16,11 +16,9 @@ as CEF log entries that can be written to log files or syslog."""
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0.33", features = ["extra-traits"]}
+syn = { version = "1.0.34", features = ["extra-traits"]}
 quote = "1.0.7"
 proc-macro2 = "1.0.18"
-lazy_static = "1.4.0"
-Inflector = "0.11.4"
 
 # Always keep this in sync within the repo
 rust-cef = {path = "../"} # "0.0.2"
