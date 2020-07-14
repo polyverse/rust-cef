@@ -7,11 +7,12 @@ extern crate syn;
 #[macro_use]
 extern crate lazy_static;
 
-use crate::proc_macro::{TokenStream};
-use syn::{DeriveInput, Attribute, AttributeArgs, Meta, Error as SynError, Lit, MetaNameValue, NestedMeta};
-use syn::spanned::Spanned;
-use std::convert::{From};
+use crate::proc_macro::TokenStream;
 use inflections::case::to_snake_case;
+use proc_macro2::{Span, TokenStream as TokenStream2};
+use std::convert::From;
+use syn::spanned::Spanned;
+use syn::{AttributeArgs, Data, DeriveInput, Error as SynError, Lit, Meta, NestedMeta};
 
 const CEF_ALLOWED_HEADERS: &[&str] = &[
     "Version",
@@ -20,7 +21,7 @@ const CEF_ALLOWED_HEADERS: &[&str] = &[
     "DeviceVersion",
     "DeviceEventClassID",
     "Name",
-    "Severity"
+    "Severity",
 ];
 
 lazy_static! {
@@ -29,12 +30,12 @@ lazy_static! {
 
     static ref CEF_FIXED_HEADERS_USAGE: String = "'cef_fixed_headers' macro expects fixed headers provided in the following syntax: #[cef_fixed_headers(header1 = \"value1\", header2 = \"value2\", ...)] ".to_owned();
     static ref CEF_FIXED_HEADERS_REDUNDANT: String = ["'cef_fixed_headers' specifies no fixed header values. Remove it or provide values.", CEF_FIXED_HEADERS_USAGE.as_str()].join(" ");
-    static ref CEF_FIXED_HEADERS_VALUE_MUST_BE_STRING: String = ["'cef_fixed_headers' fixed header values must be strings.", CEF_FIXED_HEADERS_USAGE.as_str()].join(" ");
+    static ref CEF_FIXED_HEADERS_VALUE_MUST_BE_STRING: String = "'cef_fixed_headers' fixed header values must be strings.".to_owned();
+    static ref CEF_FIXED_HEADERS_APPLICATION: String = "'cef_fixed_headers' attribute only applies to Structs or Enums.".to_owned();
 
     static ref CEF_HEADER_USAGE: String = "'cef_header' macro expects header name provided in the following syntax: #[cef_header(header_name)] ".to_owned();
     static ref CEF_HEADER_REDUNDANT: String = ["'cef_header' macro is redundant since no header name is provided.", CEF_HEADER_USAGE.as_str()].join(" ");
     static ref CEF_HEADER_ONLY_ONE: String = ["'cef_header' macro has more than one header name provided. A field can only be converted into one header.", CEF_HEADER_USAGE.as_str()].join(" ");
-
 }
 
 #[proc_macro_derive(ToCef)]
@@ -59,83 +60,112 @@ pub fn derive_to_cef(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn cef_fixed_headers(attr_tokens: TokenStream, item_tokens: TokenStream) -> TokenStream {
     if attr_tokens.is_empty() {
-        return TokenStreams::from(SynError::new(attr_tokens.span(), CEF_FIXED_HEADERS_REDUNDANT.to_owned()));
+        return TokenStream::from(
+            SynError::new(Span::call_site(), CEF_FIXED_HEADERS_REDUNDANT.to_owned())
+                .to_compile_error(),
+        );
     }
 
     let attrs = parse_macro_input!(attr_tokens as AttributeArgs);
-    println!("{:#?}", attrs);
 
-    item_tokens
-}
-
-fn get_fixed_header_values(attr: Attribute, impl_generics: &syn::ImplGenerics, name: &syn::Ident, ty_generics: &syn::TypeGenerics, where_clause: &syn::WhereClause) -> (proc_macro2::TokenStream, bool) {
-    match attr.parse_meta() {
-        Ok(meta) => {
-            match meta {
-                Meta::NameValue(nv) => {
-                    get_fixed_header_value(nv, impl_generics, name, ty_generics, where_clause)
-                },
-                Meta::List(metalist) => {
-                    if metalist.nested.is_empty() {
-                        return (SynError::new(metalist.span(), CEF_FIXED_HEADERS_REDUNDANT.as_str()).to_compile_error(), true)
-                    }
-
-                    let mut fixed_header_traits: Vec<proc_macro2::TokenStream> = vec![];
-                    for nested_meta in metalist.nested {
-                        match nested_meta {
-                            NestedMeta::Meta(m) => match m {
-                                Meta::NameValue(nv) => {
-                                    let (fixed_header_trait, compile_error) = get_fixed_header_value(nv, impl_generics, name, ty_generics, where_clause);
-                                    if compile_error {
-                                        return (fixed_header_trait, compile_error);
-                                    }
-
-                                    fixed_header_traits.push(fixed_header_trait);
-                                },
-                                _ => return (SynError::new(m.span(), CEF_FIXED_HEADERS_USAGE.as_str()).to_compile_error(), true),
-                            },
-                            NestedMeta::Lit(nestedlist) => return (SynError::new(nestedlist.span(), CEF_FIXED_HEADERS_USAGE.as_str()).to_compile_error(), true),
-                        }
-                    }
-
-                    (quote! {
-                        #(#fixed_header_traits)*
-                    }, false)
-                },
-                _ => return (SynError::new(meta.span(), CEF_FIXED_HEADERS_USAGE.as_str()).to_compile_error(), true),
-            }
-        },
-        Err(e) => return (e.to_compile_error(), true)
-    }
-}
-
-fn get_fixed_header_value(nv: MetaNameValue, impl_generics: &syn::ImplGenerics, name: &syn::Ident, ty_generics: &syn::TypeGenerics, where_clause: &syn::WhereClause) -> (proc_macro2::TokenStream, bool) {
-    let maybe_pathname = nv.path.get_ident();
-    if maybe_pathname.is_none() {
-        return (SynError::new(nv.span(), CEF_INVALID_HEADER.as_str()).to_compile_error(), true)
-    }
-    let pathname = maybe_pathname.unwrap().to_string();
-    if !is_valid_header(&pathname) {
-        return (SynError::new(nv.span(), CEF_INVALID_HEADER.as_str()).to_compile_error(), true)
+    if attrs.len() == 0 {
+        return TokenStream::from(
+            SynError::new(Span::call_site(), CEF_FIXED_HEADERS_REDUNDANT.to_owned())
+                .to_compile_error(),
+        );
     }
 
-    let value = match nv.lit {
-        Lit::Str(s) => s,
-        _ => return (SynError::new(nv.span(), CEF_FIXED_HEADERS_VALUE_MUST_BE_STRING.as_str()).to_compile_error(), true),
+    // Only applies to items
+    let item = parse_macro_input!(item_tokens as DeriveInput);
+    match item.data {
+        Data::Struct(_) | Data::Enum(_) => {}
+        _ => {
+            return TokenStream::from(
+                SynError::new(Span::call_site(), CEF_FIXED_HEADERS_APPLICATION.to_owned())
+                    .to_compile_error(),
+            )
+        }
     };
 
-    let trait_name = format_ident!("CefHeader{}", pathname);
-    let method_name = format_ident!("cef_header_{}", to_snake_case(pathname.to_string().as_str()));
+    // type name
+    let item_name = &item.ident;
 
-    (quote! {
-        impl #impl_generics rust_cef::#trait_name for #name #ty_generics #where_clause {
-            fn #method_name() -> rust_cef::CefResult {
-                Ok(#value)
+    // generics
+    let item_generics = &item.generics;
+    let (item_impl_generics, item_ty_generics, item_where_clause) = item_generics.split_for_impl();
+
+    let mut trait_impls: Vec<TokenStream2> = vec![];
+
+    for attr in attrs {
+        match attr {
+            NestedMeta::Meta(meta) => match meta {
+                Meta::NameValue(nv) => {
+                    let header_name = match nv.path.get_ident() {
+                        Some(h) => h,
+                        None => {
+                            return TokenStream::from(
+                                SynError::new(nv.path.span(), CEF_FIXED_HEADERS_USAGE.to_owned())
+                                    .to_compile_error(),
+                            )
+                        }
+                    };
+
+                    if !is_valid_header(header_name.to_string().as_str()) {
+                        return TokenStream::from(
+                            SynError::new(nv.path.span(), CEF_INVALID_HEADER.to_owned())
+                                .to_compile_error(),
+                        );
+                    }
+
+                    let fixed_value = match &nv.lit {
+                        Lit::Str(litstr) => litstr,
+                        _ => {
+                            return TokenStream::from(
+                                SynError::new(
+                                    nv.lit.span(),
+                                    CEF_FIXED_HEADERS_VALUE_MUST_BE_STRING.to_owned(),
+                                )
+                                .to_compile_error(),
+                            )
+                        }
+                    };
+
+                    let trait_name = format_ident!("CefHeader{}", header_name);
+                    let method_name = format_ident!(
+                        "cef_header_{}",
+                        to_snake_case(header_name.to_string().as_str())
+                    );
+
+                    trait_impls.push(quote! {
+                        impl #item_impl_generics rust_cef::#trait_name for #item_name #item_ty_generics #item_where_clause {
+                            fn #method_name(&self) -> rust_cef::CefResult {
+                                Ok(#fixed_value.to_owned())
+                            }
+                        }
+                    });
+                }
+                _ => {
+                    return TokenStream::from(
+                        SynError::new(meta.span(), CEF_FIXED_HEADERS_USAGE.to_owned())
+                            .to_compile_error(),
+                    )
+                }
+            },
+            _ => {
+                return TokenStream::from(
+                    SynError::new(attr.span(), CEF_FIXED_HEADERS_USAGE.to_owned())
+                        .to_compile_error(),
+                )
             }
         }
-    }, false)
-}
+    }
 
+    TokenStream::from(quote! {
+        #item
+
+        #(#trait_impls)*
+    })
+}
 
 fn is_valid_header(id: &str) -> bool {
     for header in CEF_ALLOWED_HEADERS.iter() {
