@@ -16,6 +16,10 @@ struct MultipleAttrs {}
 #[cef_fixed_headers(Version = "4234")]
 struct SingleHeader {}
 
+#[cef_fixed_headers(Version = "0", DeviceVendor = "polyverse", DeviceProduct = "zerotect", DeviceVersion = "V1", DeviceEventClassID = "LinuxKernelFault", Name = "Linux Kernel Fault", Severity = "10")]
+#[derive(ToCef)]
+struct AllFixedHeaders {}
+
 #[test]
 fn test_cef_fixed_headers_fails() {
     let t = trybuild::TestCases::new();
