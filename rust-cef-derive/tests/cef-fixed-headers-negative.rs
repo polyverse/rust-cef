@@ -43,6 +43,15 @@ struct DuplicateHeaders1{}
 #[cef_fixed_headers(Version = "0")]
 struct DuplicateHeaders2 {}
 
+#[cef_fixed_headers(Version = "1")]
+#[derive(ToCef, CefExtensions)]
+struct ManualDuplicateHeaders {}
+impl rust_cef::CefHeaderVersion for ManualDuplicateHeaders {
+    fn cef_header_version(&self) -> rust_cef::CefResult {
+        Ok("customVersion".to_owned())
+    }
+}
+
 fn main() {
 
 }

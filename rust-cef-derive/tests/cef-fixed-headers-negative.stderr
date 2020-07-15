@@ -44,7 +44,7 @@ error: 'cef_fixed_headers' fixed header values must be strings.
 22 | #[cef_fixed_headers(Version = 0)]
    |                               ^
 
-error: 'cef_fixed_headers' attribute only applies to Structs or Enums.
+error: This attribute only applies to Structs or Enums.
   --> $DIR/cef-fixed-headers-negative.rs:25:1
    |
 25 | #[cef_fixed_headers(Version = "0")]
@@ -88,5 +88,16 @@ error[E0119]: conflicting implementations of trait `rust_cef::CefHeaderVersion` 
    | ----------------------------------- first implementation here
 43 | #[cef_fixed_headers(Version = "0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `DuplicateHeaders2`
+   |
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0119]: conflicting implementations of trait `rust_cef::CefHeaderVersion` for type `ManualDuplicateHeaders`:
+  --> $DIR/cef-fixed-headers-negative.rs:46:1
+   |
+46 | #[cef_fixed_headers(Version = "1")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `ManualDuplicateHeaders`
+...
+49 | impl rust_cef::CefHeaderVersion for ManualDuplicateHeaders {
+   | ---------------------------------------------------------- first implementation here
    |
    = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -1,0 +1,15 @@
+error: This attribute only applies to Structs or Enums.
+ --> $DIR/cef-inherit-negative.rs:5:1
+  |
+5 | #[cef_inherit]
+  | ^^^^^^^^^^^^^^
+  |
+  = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: 'cef_inherit' attribute must have no parameters or arguments. It must stand by itself.
+ --> $DIR/cef-inherit-negative.rs:8:1
+  |
+8 | #[cef_inherit(Hello)]
+  | ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
