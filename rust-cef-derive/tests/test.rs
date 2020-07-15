@@ -7,8 +7,6 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 #[test]
 fn test_cef_fixed_headers_fails() {
     let t = trybuild::TestCases::new();
-    //t.compile_fail("tests/cef-fixed-headers-negative.rs");
-    //t.compile_fail("tests/cef-inherit-negative.rs");
 }
 
 #[test]
