@@ -4,7 +4,6 @@
 ///
 /// It also allows anotating fields to have specific names in CEF extensions.
 ///
-
 extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use]
@@ -17,10 +16,13 @@ extern crate lazy_static;
 use crate::proc_macro::TokenStream;
 use inflections::case::to_snake_case;
 use proc_macro2::{Span, TokenStream as TokenStream2};
+use std::collections::HashMap;
 use std::convert::From;
 use syn::spanned::Spanned;
-use std::collections::HashMap;
-use syn::{Attribute, MetaNameValue, Field, Fields, Data, DeriveInput, Error as SynError, Lit, Meta, NestedMeta, Ident, Variant, DataEnum, DataStruct};
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error as SynError, Field, Fields, Ident,
+    Lit, Meta, MetaNameValue, NestedMeta, Variant,
+};
 
 const CEF_ALLOWED_HEADERS: &[&str] = &[
     "Version",
@@ -125,7 +127,10 @@ pub fn derive_cef_header_device_version(item_tokens: TokenStream) -> TokenStream
 
     implement_trait("CefHeaderDeviceVersion", &item)
 }
-#[proc_macro_derive(CefHeaderDeviceEventClassID, attributes(cef_values, cef_inherit, cef_field))]
+#[proc_macro_derive(
+    CefHeaderDeviceEventClassID,
+    attributes(cef_values, cef_inherit, cef_field)
+)]
 pub fn derive_cef_header_device_event_class_id(item_tokens: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item_tokens as DeriveInput);
 
@@ -159,7 +164,6 @@ pub fn derive_cef_header_severity(item_tokens: TokenStream) -> TokenStream {
     implement_trait("CefHeaderSeverity", &item)
 }
 
-
 #[proc_macro_derive(CefExtensions)]
 pub fn derive_cef_extensions(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -184,18 +188,18 @@ pub fn derive_cef_extensions(input: TokenStream) -> TokenStream {
 }
 
 fn is_valid_item_type(item: &DeriveInput) -> Option<TokenStream> {
-        // Only applies to structs and enums
-        match item.data {
-            Data::Struct(_) | Data::Enum(_) => {}
-            _ => {
-                return Some(TokenStream::from(
-                    SynError::new(Span::call_site(), CEF_HEADERS_APPLICATION.to_owned())
-                        .to_compile_error(),
-                ))
-            }
+    // Only applies to structs and enums
+    match item.data {
+        Data::Struct(_) | Data::Enum(_) => {}
+        _ => {
+            return Some(TokenStream::from(
+                SynError::new(Span::call_site(), CEF_HEADERS_APPLICATION.to_owned())
+                    .to_compile_error(),
+            ))
         }
+    }
 
-        None
+    None
 }
 
 fn implement_trait(trait_name_str: &str, item: &DeriveInput) -> TokenStream {
@@ -207,39 +211,46 @@ fn implement_trait(trait_name_str: &str, item: &DeriveInput) -> TokenStream {
     let (item_impl_generics, item_ty_generics, item_where_clause) = item_generics.split_for_impl();
 
     let trait_name = format_ident!("{}", trait_name_str);
-    let method_name = format_ident!("{}",
-        to_snake_case(trait_name.to_string().as_str())
-    );
+    let method_name = format_ident!("{}", to_snake_case(trait_name.to_string().as_str()));
 
     let value = header_value_from_child_item(&trait_name, &method_name, &item);
-    if trait_name_str == "CefHeaderName" {
-        println!("{:#?}", value.to_string());
-    }
 
-    TokenStream::from(quote! {
+    let trait_impl = quote! {
         impl #item_impl_generics rust_cef::#trait_name for #item_name #item_ty_generics #item_where_clause {
             fn #method_name(&self) -> rust_cef::CefResult {
                 #value
             }
         }
-    })
+    };
+    if trait_name_str == "CefHeaderName" {
+        println!("{:#?}", trait_impl.to_string());
+    }
+
+    TokenStream::from(trait_impl)
 }
 
-fn header_value_from_child_item(header_name: &Ident, method_name: &Ident, item: &DeriveInput) -> TokenStream2 {
+fn header_value_from_child_item(
+    header_name: &Ident,
+    method_name: &Ident,
+    item: &DeriveInput,
+) -> TokenStream2 {
     // Is the Item a struct or enum?
     match &item.data {
-        Data::Struct(s) => {
-            header_value_from_child_struct(header_name, method_name, s, item)
-        },
-        Data::Enum(e) => {
-            header_value_from_child_enum(header_name, method_name, e, item)
-        },
-        Data::Union(_) => return SynError::new(Span::call_site(), CEF_HEADERS_APPLICATION.to_owned()).to_compile_error(),
+        Data::Struct(s) => header_value_from_child_struct(header_name, method_name, s, item),
+        Data::Enum(e) => header_value_from_child_enum(header_name, method_name, e, item),
+        Data::Union(_) => {
+            return SynError::new(Span::call_site(), CEF_HEADERS_APPLICATION.to_owned())
+                .to_compile_error()
+        }
     }
 }
 
-
-fn header_value_from_child_struct(header_name: &Ident, method_name: &Ident, s: &DataStruct, item: &DeriveInput) -> TokenStream2 {
+fn header_value_from_child_struct(
+    header_name: &Ident,
+    method_name: &Ident,
+    s: &DataStruct,
+    item: &DeriveInput,
+) -> TokenStream2 {
     let mut trait_values: Vec<TraitValue> = vec![];
 
     // look for fixed cef_values in top-level
@@ -258,40 +269,46 @@ fn header_value_from_child_struct(header_name: &Ident, method_name: &Ident, s: &
 
                 match attr.parse_meta() {
                     Ok(parsed_meta) => match parsed_meta {
-                        Meta::List(list) => for nested_meta in list.nested {
-                            match nested_meta {
-                                NestedMeta::Meta(meta) => match meta {
-                                    Meta::Path(p) => if p.is_ident(header_name) {
+                        Meta::List(list) => {
+                            for nested_meta in list.nested {
+                                match nested_meta {
+                                    NestedMeta::Meta(meta) => match meta {
+                                        Meta::Path(p) => {
+                                            if p.is_ident(header_name) {
+                                                let field_name = match &field.ident {
+                                                    Some(i) => format_ident!("{}", i),
+                                                    None => format_ident!("{}", index),
+                                                };
 
-                                        let field_name = match &field.ident {
-                                            Some(i) => format_ident!("{}", i),
-                                            None => format_ident!("{}", index),
-                                        };
+                                                // let's use our field's value.. either through format! or the trait
+                                                let ts = match attr.path.is_ident("cef_inherit") {
+                                                    true => quote! {
+                                                        rust_cef::#header_name::#method_name(&self.#field_name)
+                                                    },
+                                                    false => quote! {
+                                                        Ok(format!("{}", &self.#field_name))
+                                                    },
+                                                };
 
-                                        // let's use our field's value.. either through format! or the trait
-                                        let ts = match attr.path.is_ident("cef_inherit") {
-                                            true => quote!{
-                                                rust_cef::#header_name::#method_name(self.#field_name)
-                                            },
-                                            false => quote!{
-                                                Ok(format!("{}", self.#field_name))
-                                            },
-                                        };
+                                                let span = p.span().clone();
 
-                                        let span = p.span().clone();
+                                                let tv = TraitValue { ts, span };
 
-                                        let tv = TraitValue {
-                                            ts,
-                                            span,
-                                        };
-
-                                        trait_values.push(tv);
+                                                trait_values.push(tv);
+                                            }
+                                        }
+                                        _ => {
+                                            return SynError::new(attr.span(), usage_message)
+                                                .to_compile_error()
+                                        }
                                     },
-                                    _ => return SynError::new(attr.span(), usage_message).to_compile_error(),
-                                },
-                                _ => return SynError::new(attr.span(), usage_message).to_compile_error(),
+                                    _ => {
+                                        return SynError::new(attr.span(), usage_message)
+                                            .to_compile_error()
+                                    }
+                                }
                             }
-                        },
+                        }
                         _ => return SynError::new(attr.span(), usage_message).to_compile_error(),
                     },
                     Err(e) => return e.to_compile_error(),
@@ -319,7 +336,12 @@ fn header_value_from_child_struct(header_name: &Ident, method_name: &Ident, s: &
     }
 }
 
-fn header_value_from_child_enum(header_name: &Ident, method_name: &Ident, e: &DataEnum, item: &DeriveInput) -> TokenStream2 {
+fn header_value_from_child_enum(
+    header_name: &Ident,
+    method_name: &Ident,
+    e: &DataEnum,
+    item: &DeriveInput,
+) -> TokenStream2 {
     let mut trait_values: Vec<TraitValue> = vec![];
 
     // look for fixed cef_values in top-level
@@ -327,7 +349,9 @@ fn header_value_from_child_enum(header_name: &Ident, method_name: &Ident, e: &Da
         return ts;
     }
 
-    if let Some(ts) = all_variants_cef_value(header_name, method_name, &item.ident, &e, &mut trait_values) {
+    if let Some(ts) =
+        all_variants_cef_value(header_name, method_name, &item.ident, &e, &mut trait_values)
+    {
         return ts;
     }
 
@@ -350,8 +374,13 @@ fn header_value_from_child_enum(header_name: &Ident, method_name: &Ident, e: &Da
     }
 }
 
-fn all_variants_cef_value(header_name: &Ident, method_name: &Ident, enum_name: &Ident, e: &DataEnum, trait_values: &mut Vec<TraitValue>) -> Option<TokenStream2> {
-
+fn all_variants_cef_value(
+    header_name: &Ident,
+    method_name: &Ident,
+    enum_name: &Ident,
+    e: &DataEnum,
+    trait_values: &mut Vec<TraitValue>,
+) -> Option<TokenStream2> {
     let mut variant_values = HashMap::<Variant, TokenStream2>::new();
 
     // now look for struct's variants and get the header value for either ALL variants or NO variants
@@ -387,7 +416,7 @@ fn all_variants_cef_value(header_name: &Ident, method_name: &Ident, enum_name: &
                     quote! {
                         {#(#named_fields),*}
                     }
-                },
+                }
                 Fields::Unnamed(unnamedf) => {
                     let mut unnamed_fields: Vec<TokenStream2> = vec![];
                     for (idx, _) in unnamedf.unnamed.iter().enumerate() {
@@ -398,9 +427,8 @@ fn all_variants_cef_value(header_name: &Ident, method_name: &Ident, enum_name: &
                     quote! {
                         (#(#unnamed_fields),*)
                     }
-                },
-                Fields::Unit => quote!{
-                },
+                }
+                Fields::Unit => quote! {},
             };
 
             let match_branch = quote! {
@@ -411,7 +439,7 @@ fn all_variants_cef_value(header_name: &Ident, method_name: &Ident, enum_name: &
         }
 
         let ts = quote! {
-            match self {
+            match &self {
                 #(#match_branches)*
             }
         };
@@ -427,11 +455,19 @@ fn all_variants_cef_value(header_name: &Ident, method_name: &Ident, enum_name: &
     None
 }
 
-fn variant_value(header_name: &Ident, method_name: &Ident, variant: &Variant, variant_values: &mut  HashMap<Variant, TokenStream2>) -> Option<TokenStream2> {
+fn variant_value(
+    header_name: &Ident,
+    method_name: &Ident,
+    variant: &Variant,
+    variant_values: &mut HashMap<Variant, TokenStream2>,
+) -> Option<TokenStream2> {
     let mut in_variant_values: Vec<TraitValue> = vec![];
 
     for attr in &variant.attrs {
-        if attr.path.is_ident("cef_inherit") || attr.path.is_ident("cef_values") || attr.path.is_ident("cef_field") {
+        if attr.path.is_ident("cef_inherit")
+            || attr.path.is_ident("cef_values")
+            || attr.path.is_ident("cef_field")
+        {
             let usage_message = match attr.path.is_ident("cef_inherit") {
                 true => CEF_INHERIT_ENUM_USAGE.to_owned(),
                 false => match attr.path.is_ident("cef_values") {
@@ -442,20 +478,41 @@ fn variant_value(header_name: &Ident, method_name: &Ident, variant: &Variant, va
 
             match attr.parse_meta() {
                 Ok(parsed_meta) => match parsed_meta {
-                    Meta::List(list) => for nested_meta in list.nested {
-                        match nested_meta {
-                            NestedMeta::Meta(meta) => match meta {
-                                Meta::NameValue(nv) => if nv.path.is_ident(header_name) {
-                                    // we found the attribute for this header
-                                    if let Some(ts) = variant_trait(header_name, method_name, attr, nv, &variant.fields, &mut in_variant_values) {
-                                        return Some(ts);
+                    Meta::List(list) => {
+                        for nested_meta in list.nested {
+                            match nested_meta {
+                                NestedMeta::Meta(meta) => match meta {
+                                    Meta::NameValue(nv) => {
+                                        if nv.path.is_ident(header_name) {
+                                            // we found the attribute for this header
+                                            if let Some(ts) = variant_trait(
+                                                header_name,
+                                                method_name,
+                                                attr,
+                                                nv,
+                                                &variant.fields,
+                                                &mut in_variant_values,
+                                            ) {
+                                                return Some(ts);
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        return Some(
+                                            SynError::new(attr.span(), usage_message)
+                                                .to_compile_error(),
+                                        )
                                     }
                                 },
-                                _ => return Some(SynError::new(attr.span(), usage_message).to_compile_error()),
-                            },
-                            _ => return Some(SynError::new(attr.span(), usage_message).to_compile_error()),
+                                _ => {
+                                    return Some(
+                                        SynError::new(attr.span(), usage_message)
+                                            .to_compile_error(),
+                                    )
+                                }
+                            }
                         }
-                    },
+                    }
                     _ => return Some(SynError::new(attr.span(), usage_message).to_compile_error()),
                 },
                 Err(e) => return Some(e.to_compile_error()),
@@ -469,7 +526,7 @@ fn variant_value(header_name: &Ident, method_name: &Ident, variant: &Variant, va
                 .to_compile_error();
         });
 
-        return Some(quote!{
+        return Some(quote! {
             #(#errs)*
         });
     } else if in_variant_values.len() == 1 {
@@ -482,43 +539,78 @@ fn variant_value(header_name: &Ident, method_name: &Ident, variant: &Variant, va
     None
 }
 
-fn top_level_cef_values(header_name: &Ident, item: &DeriveInput, trait_values: &mut Vec<TraitValue>) -> Option<TokenStream2> {
+fn top_level_cef_values(
+    header_name: &Ident,
+    item: &DeriveInput,
+    trait_values: &mut Vec<TraitValue>,
+) -> Option<TokenStream2> {
     for attr in &item.attrs {
         if attr.path.is_ident("cef_inherit") {
-            return Some(SynError::new(attr.path.span(), CEF_INHERIT_STRUCT_USAGE.to_owned()).to_compile_error());
+            return Some(
+                SynError::new(attr.path.span(), CEF_INHERIT_STRUCT_USAGE.to_owned())
+                    .to_compile_error(),
+            );
         }
 
         if attr.path.is_ident("cef_values") {
             match attr.parse_meta() {
                 Err(e) => return Some(e.to_compile_error()),
                 Ok(metadata) => match metadata {
-                    Meta::List(list) => for nestedmeta in list.nested {
-                        match nestedmeta {
-                            NestedMeta::Meta(meta) => match meta {
-                                Meta::NameValue(mnv) => {
-                                    if mnv.path.is_ident(header_name) {
-                                        match &mnv.lit {
-                                            Lit::Str(strval) => {
-                                                let ts = quote! {
-                                                    Ok(#strval.to_owned())
-                                                };
-                                                let span = mnv.span().clone();
-                                                trait_values.push(TraitValue{
-                                                    ts,
-                                                    span,
-                                                });
-                                            },
-                                            _ => return Some(SynError::new(mnv.lit.span(), CEF_VALUES_STRINGS.to_owned()).to_compile_error()),
+                    Meta::List(list) => {
+                        for nestedmeta in list.nested {
+                            match nestedmeta {
+                                NestedMeta::Meta(meta) => match meta {
+                                    Meta::NameValue(mnv) => {
+                                        if mnv.path.is_ident(header_name) {
+                                            match &mnv.lit {
+                                                Lit::Str(strval) => {
+                                                    let ts = quote! {
+                                                        Ok(#strval.to_owned())
+                                                    };
+                                                    let span = mnv.span().clone();
+                                                    trait_values.push(TraitValue { ts, span });
+                                                }
+                                                _ => {
+                                                    return Some(
+                                                        SynError::new(
+                                                            mnv.lit.span(),
+                                                            CEF_VALUES_STRINGS.to_owned(),
+                                                        )
+                                                        .to_compile_error(),
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
+                                    _ => {
+                                        return Some(
+                                            SynError::new(
+                                                attr.span(),
+                                                CEF_VALUES_STRUCT_USAGE.to_owned(),
+                                            )
+                                            .to_compile_error(),
+                                        )
+                                    }
                                 },
-                                _ => return Some(SynError::new(attr.span(), CEF_VALUES_STRUCT_USAGE.to_owned()).to_compile_error()),
-                            },
-                            _ => return Some(SynError::new(attr.span(), CEF_VALUES_STRUCT_USAGE.to_owned()).to_compile_error()),
+                                _ => {
+                                    return Some(
+                                        SynError::new(
+                                            attr.span(),
+                                            CEF_VALUES_STRUCT_USAGE.to_owned(),
+                                        )
+                                        .to_compile_error(),
+                                    )
+                                }
+                            }
                         }
-                    },
-                    _ => return Some(SynError::new(attr.span(), CEF_VALUES_STRUCT_USAGE.to_owned()).to_compile_error()),
-                }
+                    }
+                    _ => {
+                        return Some(
+                            SynError::new(attr.span(), CEF_VALUES_STRUCT_USAGE.to_owned())
+                                .to_compile_error(),
+                        )
+                    }
+                },
             }
         }
     }
@@ -526,7 +618,14 @@ fn top_level_cef_values(header_name: &Ident, item: &DeriveInput, trait_values: &
     None
 }
 
-fn variant_trait(header_name: &Ident, method_name: &Ident, attr: &Attribute, nv: MetaNameValue, fields: &Fields, in_variant_values: &mut Vec<TraitValue>) -> Option<TokenStream2> {
+fn variant_trait(
+    header_name: &Ident,
+    method_name: &Ident,
+    attr: &Attribute,
+    nv: MetaNameValue,
+    fields: &Fields,
+    in_variant_values: &mut Vec<TraitValue>,
+) -> Option<TokenStream2> {
     let ts = match &nv.lit {
         Lit::Int(litint) => match litint.base10_parse::<usize>() {
             Ok(i) => match fields.iter().nth(i) {
@@ -577,7 +676,7 @@ fn variant_trait(header_name: &Ident, method_name: &Ident, attr: &Attribute, nv:
                             Ok(format!("{}", #fieldid).to_owned())
                         },
                     false =>  quote! {
-                        rust_cef::#header_name::#method_name(&#fieldid)
+                        rust_cef::#header_name::#method_name(#fieldid)
                     },
                 }
             },
@@ -587,10 +686,7 @@ fn variant_trait(header_name: &Ident, method_name: &Ident, attr: &Attribute, nv:
 
     let span = nv.span().clone();
 
-    let tv = TraitValue {
-        ts,
-        span,
-    };
+    let tv = TraitValue { ts, span };
 
     in_variant_values.push(tv);
 
