@@ -16,7 +16,6 @@ extern crate lazy_static;
 use crate::proc_macro::TokenStream;
 use inflections::case::to_snake_case;
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use std::collections::HashMap;
 use std::convert::From;
 use syn::spanned::Spanned;
 use syn::{
@@ -381,7 +380,7 @@ fn all_variants_cef_value(
     e: &DataEnum,
     trait_values: &mut Vec<TraitValue>,
 ) -> Option<TokenStream2> {
-    let mut variant_values = HashMap::<Variant, TokenStream2>::new();
+    let mut variant_values: Vec<(Variant, TokenStream2)> = vec![];
 
     // now look for struct's variants and get the header value for either ALL variants or NO variants
     for variant in e.variants.iter() {
@@ -459,7 +458,7 @@ fn variant_value(
     header_name: &Ident,
     method_name: &Ident,
     variant: &Variant,
-    variant_values: &mut HashMap<Variant, TokenStream2>,
+    variant_values: &mut Vec<(Variant, TokenStream2)>,
 ) -> Option<TokenStream2> {
     let mut in_variant_values: Vec<TraitValue> = vec![];
 
@@ -531,7 +530,7 @@ fn variant_value(
         });
     } else if in_variant_values.len() == 1 {
         match in_variant_values.pop() {
-            Some(tv) => {variant_values.insert(variant.clone(), tv.ts);},
+            Some(tv) => {variant_values.push((variant.clone(), tv.ts));},
             None => return Some(SynError::new(Span::call_site(), "FATAL Error in this macro. Thought it generated a value, but it apparently did not.".to_owned()).to_compile_error()),
         }
     }
