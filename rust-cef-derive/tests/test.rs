@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[test]
 fn test_cef_fixed_headers_fails() {
-    let t = trybuild::TestCases::new();
+    let _t = trybuild::TestCases::new();
 }
 
 #[test]
