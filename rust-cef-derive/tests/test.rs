@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate rust_cef_derive;
 
-use rust_cef::{ToCef, CefHeaderVersion, CefHeaderName, CefExtensions, CefHeaderSeverity};
+use rust_cef::{ToCef, CefHeaderVersion, CefHeaderName, CefExtensions};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[test]
@@ -42,6 +42,7 @@ fn test_to_cef_with_fixed_and_manual_headers() {
 #[test]
 fn test_cef_inherit() {
     let t1 = Top::V1("ClassId234".to_owned(), NameInheritorStruct{name_struct: NameStruct{name: "Test1".to_owned()}}, 24);
+    assert_eq!(t1.to_cef().unwrap(), "");
 }
 
 
@@ -86,25 +87,27 @@ impl CefHeaderVersion for ManualAndFixedHeaders {
 
 #[derive(CefHeaderVersion, CefHeaderDeviceVendor, CefHeaderDeviceVersion, CefHeaderDeviceEventClassID)]
 #[derive(CefHeaderName, CefHeaderDeviceProduct, CefHeaderSeverity)]
-#[cef_values(CefHeaderVersion = "0", CefHeaderDeviceVendor = "polyverse", CefHeaderDeviceProduct = "zerotect")]
+#[cef_values(CefHeaderVersion = "1", CefHeaderDeviceVendor = "polyverse", CefHeaderDeviceProduct = "zerotect")]
 #[derive(ToCef, CefExtensions)]
 enum Top {
 
     // Name will use the display trait, rather than inheriting the CefHeaderName trait
-    #[cef_values(CefHeaderDeviceVersion = "V1", CefHeaderName = 1, CefHeaderSeverity = 2, CefHeaderDeviceEventClassID = 0)]
+    #[cef_values(CefHeaderDeviceVersion = "V1")]
+    #[cef_field(CefHeaderName = 1, CefHeaderSeverity = 2, CefHeaderDeviceEventClassID = 0)]
     V1(String, NameInheritorStruct, usize),
 
-    #[cef_values(CefHeaderDeviceVersion = "V2", CefHeaderSeverity = severity)]
-    #[cef_inherit(Name = name_impl)]
+    #[cef_values(CefHeaderDeviceVersion = "V2")]
+    #[cef_field(CefHeaderSeverity = "severity", CefHeaderDeviceEventClassID = "event_class")]
+    #[cef_inherit(CefHeaderName = "name_impl")]
     V2{event_class: &'static str, name_impl: NameInheritorStruct, severity: usize}
 }
 
 #[derive(CefHeaderName)]
 struct NameInheritorStruct {
-
     #[cef_inherit(CefHeaderName)]
     pub name_struct: NameStruct
 }
+
 impl Display for NameInheritorStruct {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "NameInheritorStruct::{}", self.name_struct)
@@ -114,10 +117,10 @@ impl Display for NameInheritorStruct {
 
 #[derive(CefHeaderName)]
 struct NameStruct {
-
-    #[cef_values(CefHeaderName)]
+    #[cef_field(CefHeaderName)]
     pub name: String
 }
+
 impl Display for NameStruct {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "NameStruct::{}", self.name)
