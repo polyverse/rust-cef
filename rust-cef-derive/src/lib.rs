@@ -221,9 +221,8 @@ fn implement_trait(trait_name_str: &str, item: &DeriveInput) -> TokenStream {
             }
         }
     };
-    if trait_name_str == "CefHeaderName" {
-        println!("{:#?}", trait_impl.to_string());
-    }
+
+    //println!("{:#?}", trait_impl.to_string());
 
     TokenStream::from(trait_impl)
 }
