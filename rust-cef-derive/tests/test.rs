@@ -159,25 +159,25 @@ impl CefHeaderVersion for ManualAndFixedHeaders {
 enum Top {
     // Name will use the display trait, rather than inheriting the CefHeaderName trait
     #[cef_values(CefHeaderDeviceVersion = "V1")]
-    #[cef_field(
-        CefHeaderName = 1,
-        CefHeaderSeverity = 2,
-        CefHeaderDeviceEventClassID = 0
-    )]
-    V1(String, NameInheritorStruct, usize),
+    V1(
+        #[cef_field(CefHeaderDeviceEventClassID)] String,
+        #[cef_field(CefHeaderName)] NameInheritorStruct,
+        #[cef_field(CefHeaderSeverity)] usize,
+    ),
 
     #[cef_values(CefHeaderDeviceVersion = "V2")]
-    #[cef_field(
-        CefHeaderSeverity = "severity",
-        CefHeaderDeviceEventClassID = "event_class"
-    )]
-    #[cef_inherit(CefHeaderName = "name_impl")]
     V2 {
+        #[cef_field(CefHeaderDeviceEventClassID)]
         event_class: &'static str,
+        #[cef_inherit(CefHeaderName)]
         name_impl: NameInheritorStruct,
+        #[cef_field(CefHeaderSeverity)]
         severity: usize,
     },
 }
+
+#[derive(CefHeaderName)]
+struct TupleStule(#[cef_inherit(CefHeaderName)] NameStruct);
 
 #[derive(CefHeaderName)]
 struct NameInheritorStruct {
