@@ -42,13 +42,43 @@ fn test_to_cef_with_fixed_and_manual_headers() {
 }
 
 #[test]
-fn test_cef_inherit() {
+fn test_cef_extensions() {
+    let n1 = NameStruct {
+        name: "WillBeRenamed".to_owned(),
+    };
+    assert_eq!(n1.cef_extensions().unwrap(), "newname=WillBeRenamed");
+    // Header implementation still works
+    assert_eq!(n1.cef_header_name().unwrap(), "WillBeRenamed");
+
+    let n2 = NameInheritorStruct {
+        name_struct: NameStruct {
+            name: "NS1".to_owned(),
+        },
+        name_struct2: NameStruct {
+            name: "NS2".to_owned(),
+        },
+        address: "An address of some sort".to_owned(),
+        age: 42,
+    };
+    assert_eq!(
+        n2.cef_extensions().unwrap(),
+        "newname=NS1 address=An address of some sort name2=NameStruct::NS2 person_age=42"
+    );
+}
+
+#[test]
+fn test_complete_to_cef() {
     let v1 = Top::V1(
         "ClassId234".to_owned(),
         NameInheritorStruct {
             name_struct: NameStruct {
                 name: "Test1".to_owned(),
             },
+            name_struct2: NameStruct {
+                name: "Test2".to_owned(),
+            },
+            address: "Address".to_owned(),
+            age: 87,
         },
         24,
     );
@@ -63,6 +93,11 @@ fn test_cef_inherit() {
             name_struct: NameStruct {
                 name: "Test2".to_owned(),
             },
+            name_struct2: NameStruct {
+                name: "Test1".to_owned(),
+            },
+            address: "Address2".to_owned(),
+            age: 78,
         },
         severity: 85,
     };
@@ -155,7 +190,7 @@ impl CefHeaderVersion for ManualAndFixedHeaders {
     CefHeaderDeviceVendor = "polyverse",
     CefHeaderDeviceProduct = "zerotect"
 )]
-#[derive(ToCef, CefExtensions)]
+#[derive(ToCef)]
 enum Top {
     // Name will use the display trait, rather than inheriting the CefHeaderName trait
     #[cef_values(CefHeaderDeviceVersion = "V1")]
@@ -176,13 +211,33 @@ enum Top {
     },
 }
 
+impl CefExtensions for Top {
+    fn cef_extensions(&self) -> rust_cef::CefResult {
+        Ok("".to_owned())
+    }
+}
+
 #[derive(CefHeaderName)]
 struct TupleStule(#[cef_inherit(CefHeaderName)] NameStruct);
 
-#[derive(CefHeaderName)]
+#[derive(CefHeaderName, CefExtensions)]
 struct NameInheritorStruct {
+    // using
+    // #[cef_ext_field]
+    // would do: name_struct.to_string()
+    // but we want to gobble extension field's created inside NameStruct
+    #[cef_ext_gobble]
     #[cef_inherit(CefHeaderName)]
     pub name_struct: NameStruct,
+
+    #[cef_ext_field]
+    pub address: String,
+
+    #[cef_ext_field(name2)]
+    pub name_struct2: NameStruct,
+
+    #[cef_ext_field(person_age)]
+    pub age: usize,
 }
 
 impl Display for NameInheritorStruct {
@@ -191,8 +246,10 @@ impl Display for NameInheritorStruct {
     }
 }
 
-#[derive(CefHeaderName)]
+#[derive(CefHeaderName, CefExtensions)]
 struct NameStruct {
+    // use the field's name
+    #[cef_ext_field(newname)]
     #[cef_field(CefHeaderName)]
     pub name: String,
 }

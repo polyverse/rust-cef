@@ -1,10 +1,10 @@
+use std::collections::HashMap;
 /// Copyright 2020 Polyverse Corporation
 /// This module provides traits to allow arbitrary Rust items (structs, enums, etc.)
 /// to be converted into Common Event Format strings used by popular loggers around the world.
 ///
 /// This is primarily built to have guard rails and ensure the CEF doesn't
 /// break by accident when making changes to Rust items.
-
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -23,7 +23,9 @@ impl Error for CefConversionError {}
 impl Display for CefConversionError {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            CefConversionError::Unexpected(message) => write!(f, "CefConversionError::Unexpected {}", message),
+            CefConversionError::Unexpected(message) => {
+                write!(f, "CefConversionError::Unexpected {}", message)
+            }
         }
     }
 }
@@ -31,6 +33,11 @@ impl Display for CefConversionError {
 /// CefResult is the consistent result type used by all
 /// code in this module and sub-modules
 pub type CefResult = Result<String, CefConversionError>;
+
+// CefExtensionsResult is used to return an error when necessary
+// but nothing useful when it works. Making it an error
+// provides proper context vs doing Option
+pub type CefExtensionsResult = Result<(), CefConversionError>;
 
 /// A trait that returns the "Version" CEF Header
 pub trait CefHeaderVersion {
@@ -72,23 +79,39 @@ pub trait CefHeaderSeverity {
 /// added by sub-fields or sub-objects from the object on which
 /// this is implemented.
 pub trait CefExtensions {
-    fn cef_extensions(&self) -> CefResult;
+    fn cef_extensions(&self, collector: &mut HashMap<String, String>) -> CefExtensionsResult;
 }
 
 /// This trait emits an ArcSight Common Event Format
 /// string by combining all the other traits that provide
 /// CEF headers and extensions.
-pub trait ToCef :
-        CefHeaderVersion +
-        CefHeaderDeviceVendor +
-        CefHeaderDeviceProduct +
-        CefHeaderDeviceVersion +
-        CefHeaderDeviceEventClassID +
-        CefHeaderName +
-        CefHeaderSeverity +
-        CefExtensions {
-
+pub trait ToCef:
+    CefHeaderVersion
+    + CefHeaderDeviceVendor
+    + CefHeaderDeviceProduct
+    + CefHeaderDeviceVersion
+    + CefHeaderDeviceEventClassID
+    + CefHeaderName
+    + CefHeaderSeverity
+    + CefExtensions
+{
     fn to_cef(&self) -> CefResult {
+        let mut extensions: HashMap<String, String> = HashMap::new();
+
+        // get our extensions
+        if let Err(err) = self.cef_extensions(&mut extensions) {
+            return Err(err);
+        };
+
+        // make it into key=value strings
+        let kvstrs: Vec<String> = extensions
+            .into_iter()
+            .map(|(key, value)| [key, value].join("="))
+            .collect();
+
+        // Make it into a "key1=value1 key2=value2" string (each key=value string concatenated and separated by spaces)
+        let extensionsstr = kvstrs.join(" ");
+
         let mut cef_entry = String::new();
         cef_entry.push_str("CEF:");
         cef_entry.push_str(&self.cef_header_version()?);
@@ -105,12 +128,11 @@ pub trait ToCef :
         cef_entry.push_str("|");
         cef_entry.push_str(&self.cef_header_severity()?);
         cef_entry.push_str("|");
-        cef_entry.push_str(&self.cef_extensions()?);
+        cef_entry.push_str(extensionsstr.as_str());
 
         Ok(cef_entry)
     }
 }
-
 
 /********************************************************************************************** */
 /* Tests! Tests! Tests! */
@@ -164,8 +186,9 @@ mod test {
     }
 
     impl CefExtensions for GoodExample {
-        fn cef_extensions(&self) -> CefResult {
-            Ok("customField=customValue".to_owned())
+        fn cef_extensions(&self, collector: &mut HashMap<String, String>) -> CefExtensionsResult {
+            collector.insert("customField".to_owned(), "customValue".to_owned());
+            Ok(())
         }
     }
 
@@ -197,7 +220,9 @@ mod test {
 
     impl CefHeaderDeviceEventClassID for BadExample {
         fn cef_header_device_event_class_id(&self) -> CefResult {
-            Err(CefConversionError::Unexpected("This error should propagate".to_owned()))
+            Err(CefConversionError::Unexpected(
+                "This error should propagate".to_owned(),
+            ))
         }
     }
 
@@ -214,11 +239,11 @@ mod test {
     }
 
     impl CefExtensions for BadExample {
-        fn cef_extensions(&self) -> CefResult {
-            Ok("customField=customValue".to_owned())
+        fn cef_extensions(&self, collector: &mut HashMap<String, String>) -> CefExtensionsResult {
+            collector.insert("customField".to_owned(), "customValue".to_owned());
+            Ok(())
         }
     }
-
 
     #[test]
     fn test_impl_works() {
@@ -233,6 +258,9 @@ mod test {
         let example = BadExample {};
         let result = example.to_cef();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), CefConversionError::Unexpected("This error should propagate".to_owned()));
+        assert_eq!(
+            result.unwrap_err(),
+            CefConversionError::Unexpected("This error should propagate".to_owned())
+        );
     }
 }
