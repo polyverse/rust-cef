@@ -62,8 +62,6 @@ type CompileResult = Result<TokenStream2, TokenStream2>;
 type CollectedCompileResult = Result<Vec<Option<TokenStream2>>, TokenStream2>;
 type OptionalCompileResult = Result<Option<TokenStream2>, TokenStream2>;
 
-type VariantFieldResult = Result<Ident, TokenStream2>;
-
 type ParseAttrResult<T> = Result<T, TokenStream2>;
 
 /// Implements the trait asked by any of the `#[derive(CefHeader*)]` attributes
@@ -610,9 +608,9 @@ fn destructure_and_match_variant(
         .enumerate()
         .map(|(index, f)| -> CompileResult {
             // see if there's any field-level cef_inherit or cef_field attributes on the variant
-            let (field_prefix, fieldid) = match &f.ident {
-                Some(id) => (quote! {#id:}, format_ident!("_{}", id)),
-                None => (quote! {}, format_ident!("_index{}", index)),
+            let fieldid = match &f.ident {
+                Some(id) => format_ident!("{}", id),
+                None => format_ident!("index{}", index),
             };
 
             let final_fieldid =
@@ -622,7 +620,7 @@ fn destructure_and_match_variant(
                     Ok(ident) => ident,
                 };
 
-            Ok(quote! {#field_prefix#final_fieldid})
+            Ok(quote! {#final_fieldid})
         })
         .collect();
 
@@ -641,6 +639,8 @@ fn destructure_and_match_variant(
         Fields::Unnamed(_) => quote! {(#(#field_captures),*)},
         Fields::Unit => quote! {},
     };
+
+    //println!("\n\n{:#?}\n\n", variant_capture.to_string());
 
     let val = match trait_values.len() {
         // no values for this variant at this level. We return no branch.
@@ -686,7 +686,7 @@ fn variant_field_value(
     fieldid: &Ident,
     field: &Field,
     trait_values: &mut Vec<TraitValue>,
-) -> VariantFieldResult {
+) -> CompileResult {
     let mut ignore_ident: bool = true;
 
     for attr in &field.attrs {
@@ -726,8 +726,11 @@ fn variant_field_value(
     }
 
     match ignore_ident {
-        true => Ok(format_ident!("_")),
-        false => Ok(fieldid.clone()),
+        true => match &field.ident {
+            Some(ident) => Ok(quote! {#ident: _}),
+            None => Ok(quote! {_}),
+        },
+        false => Ok(quote! {#fieldid}),
     }
 }
 

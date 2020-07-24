@@ -105,7 +105,7 @@ fn test_complete_to_cef() {
     );
     assert_eq!(
         v1.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test1|24|top_name=ClassId234 name2=NameStruct::Test2 address=Address person_age=87 newname=Test1"
+        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test1|24|address=Address name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
     );
 
     let v2 = Top::V2 {
@@ -125,7 +125,7 @@ fn test_complete_to_cef() {
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 address=Address2 name2=NameStruct::Test1 newname=Test2 person_age=78 severity=85"
     );
 }
 
@@ -224,13 +224,10 @@ enum Top {
         #[cef_field(CefHeaderDeviceEventClassID)]
         #[cef_ext_field(top_name)]
         String,
-
         #[cef_field(CefHeaderName)]
         #[cef_ext_gobble]
         NameInheritorStruct,
-
-        #[cef_field(CefHeaderSeverity)]
-        usize,
+        #[cef_field(CefHeaderSeverity)] usize,
     ),
 
     #[cef_values(CefHeaderDeviceVersion = "V2")]
