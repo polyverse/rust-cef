@@ -1,6 +1,6 @@
 [package]
 name = "rust-cef-derive"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2018"
 license-file = "LICENSE"
 readme = "README.md"

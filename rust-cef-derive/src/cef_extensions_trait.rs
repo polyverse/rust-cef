@@ -72,7 +72,7 @@ pub fn implement_extensions_trait(item_tokens: TokenStream) -> TokenStream {
         }
     };
 
-    println!("\n\n{:#?}\n\n", trait_impl.to_string());
+    //println!("\n\n{:#?}\n\n", trait_impl.to_string());
 
     TokenStream::from(trait_impl)
 }
