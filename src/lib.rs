@@ -104,10 +104,12 @@ pub trait ToCef:
         };
 
         // make it into key=value strings
-        let kvstrs: Vec<String> = extensions
+        let mut kvstrs: Vec<String> = extensions
             .into_iter()
             .map(|(key, value)| [key, value].join("="))
             .collect();
+
+        kvstrs.sort_unstable();
 
         // Make it into a "key1=value1 key2=value2" string (each key=value string concatenated and separated by spaces)
         let extensionsstr = kvstrs.join(" ");
@@ -187,7 +189,10 @@ mod test {
 
     impl CefExtensions for GoodExample {
         fn cef_extensions(&self, collector: &mut HashMap<String, String>) -> CefExtensionsResult {
-            collector.insert("customField".to_owned(), "customValue".to_owned());
+            collector.insert("customField1".to_owned(), "customValue1".to_owned());
+            collector.insert("customField2".to_owned(), "customValue2".to_owned());
+            collector.insert("customField3".to_owned(), "customValue2".to_owned());
+            collector.insert("customField4".to_owned(), "customValue3".to_owned());
             Ok(())
         }
     }
@@ -250,7 +255,7 @@ mod test {
         let example = GoodExample {};
         let result = example.to_cef();
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "CEF:0|polyverse|zerotect|V1|LinuxKernelTrap|Linux Kernel Trap|10|customField=customValue");
+        assert_eq!(result.unwrap(), "CEF:0|polyverse|zerotect|V1|LinuxKernelTrap|Linux Kernel Trap|10|customField1=customValue1 customField2=customValue2 customField3=customValue2 customField4=customValue3");
     }
 
     #[test]

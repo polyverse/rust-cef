@@ -2,6 +2,7 @@
 extern crate rust_cef_derive;
 
 use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[test]
@@ -46,7 +47,12 @@ fn test_cef_extensions() {
     let n1 = NameStruct {
         name: "WillBeRenamed".to_owned(),
     };
-    assert_eq!(n1.cef_extensions().unwrap(), "newname=WillBeRenamed");
+    let mut collector = HashMap::<String, String>::new();
+    assert!(n1.cef_extensions(&mut collector).is_ok());
+    assert_eq!(
+        collector.get(&"newname".to_owned()),
+        Some(&"WillBeRenamed".to_owned())
+    );
     // Header implementation still works
     assert_eq!(n1.cef_header_name().unwrap(), "WillBeRenamed");
 
@@ -60,9 +66,24 @@ fn test_cef_extensions() {
         address: "An address of some sort".to_owned(),
         age: 42,
     };
+
+    let mut collector = HashMap::<String, String>::new();
+    assert!(n2.cef_extensions(&mut collector).is_ok());
     assert_eq!(
-        n2.cef_extensions().unwrap(),
-        "newname=NS1 address=An address of some sort name2=NameStruct::NS2 person_age=42"
+        collector.get(&"newname".to_owned()),
+        Some(&"NS1".to_owned())
+    );
+    assert_eq!(
+        collector.get(&"address".to_owned()),
+        Some(&"An address of some sort".to_owned())
+    );
+    assert_eq!(
+        collector.get(&"name2".to_owned()),
+        Some(&"NameStruct::NS2".to_owned())
+    );
+    assert_eq!(
+        collector.get(&"person_age".to_owned()),
+        Some(&"42".to_owned())
     );
 }
 
@@ -84,7 +105,7 @@ fn test_complete_to_cef() {
     );
     assert_eq!(
         v1.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test1|24|"
+        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test1|24|top_name=ClassId234 name2=NameStruct::Test2 address=Address person_age=87 newname=Test1"
     );
 
     let v2 = Top::V2 {
@@ -145,8 +166,12 @@ struct SingleHeader {}
 #[derive(ToCef)]
 struct AllFixedHeadersCustomExtensions {}
 impl CefExtensions for AllFixedHeadersCustomExtensions {
-    fn cef_extensions(&self) -> rust_cef::CefResult {
-        Ok("extension1=value1".to_owned())
+    fn cef_extensions(
+        &self,
+        collector: &mut HashMap<String, String>,
+    ) -> rust_cef::CefExtensionsResult {
+        collector.insert("extension1".to_owned(), "value1".to_owned());
+        Ok(())
     }
 }
 
@@ -184,6 +209,7 @@ impl CefHeaderVersion for ManualAndFixedHeaders {
     CefHeaderName,
     CefHeaderDeviceProduct,
     CefHeaderSeverity,
+    CefExtensions,
 )]
 #[cef_values(
     CefHeaderVersion = "1",
@@ -195,26 +221,32 @@ enum Top {
     // Name will use the display trait, rather than inheriting the CefHeaderName trait
     #[cef_values(CefHeaderDeviceVersion = "V1")]
     V1(
-        #[cef_field(CefHeaderDeviceEventClassID)] String,
-        #[cef_field(CefHeaderName)] NameInheritorStruct,
-        #[cef_field(CefHeaderSeverity)] usize,
+        #[cef_field(CefHeaderDeviceEventClassID)]
+        #[cef_ext_field(top_name)]
+        String,
+
+        #[cef_field(CefHeaderName)]
+        #[cef_ext_gobble]
+        NameInheritorStruct,
+
+        #[cef_field(CefHeaderSeverity)]
+        usize,
     ),
 
     #[cef_values(CefHeaderDeviceVersion = "V2")]
     V2 {
         #[cef_field(CefHeaderDeviceEventClassID)]
+        #[cef_ext_field(EventClassNewName)]
         event_class: &'static str,
+
         #[cef_inherit(CefHeaderName)]
+        #[cef_ext_gobble]
         name_impl: NameInheritorStruct,
+
+        #[cef_ext_field]
         #[cef_field(CefHeaderSeverity)]
         severity: usize,
     },
-}
-
-impl CefExtensions for Top {
-    fn cef_extensions(&self) -> rust_cef::CefResult {
-        Ok("".to_owned())
-    }
 }
 
 #[derive(CefHeaderName)]
