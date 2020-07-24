@@ -121,6 +121,7 @@ fn test_complete_to_cef() {
             age: 78,
         },
         severity: 85,
+        unused: 20,
     };
 
     assert_eq!(
@@ -243,6 +244,8 @@ enum Top {
         #[cef_ext_field]
         #[cef_field(CefHeaderSeverity)]
         severity: usize,
+
+        unused: usize,
     },
 }
 

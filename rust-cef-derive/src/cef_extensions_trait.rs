@@ -72,7 +72,7 @@ pub fn implement_extensions_trait(item_tokens: TokenStream) -> TokenStream {
         }
     };
 
-    //println!("\n\n{:#?}\n\n", trait_impl.to_string());
+    println!("\n\n{:#?}\n\n", trait_impl.to_string());
 
     TokenStream::from(trait_impl)
 }
@@ -423,9 +423,9 @@ fn destructure_and_match_variant(variant: &Variant) -> OptionalCompileResult {
             |(index, f)| -> Result<(TokenStream2, TokenStream2), TokenStream2> {
                 // see if there's any field-level cef_inherit or cef_field attributes on the variant
 
-                let (fieldid, field_name_from_id) = match &f.ident {
-                    Some(id) => (format_ident!("{}", id), FieldNameFromId::Allowed),
-                    None => (format_ident!("index{}", index), FieldNameFromId::NotAllowed),
+                let (fieldid, ignore_prefix, field_name_from_id) = match &f.ident {
+                    Some(id) => (id.clone(), quote!{#id:}, FieldNameFromId::Allowed),
+                    None => (format_ident!("index{}", index), quote!{}, FieldNameFromId::NotAllowed),
                 };
 
                 let (final_fieldid, extraction) = match field_extraction(
@@ -437,16 +437,16 @@ fn destructure_and_match_variant(variant: &Variant) -> OptionalCompileResult {
                 ) {
                     Err(ts) => return Err(ts),
                     Ok(maybe_ext) => match maybe_ext {
-                        Some(ext) => (fieldid, ext),
+                        Some(ext) => (quote! {#fieldid}, ext),
 
                         // No extraction for this field
                         // first, capture fieldid as "_" to ignore it (good practice)
                         // and give it an empty extraction
-                        None => (format_ident!("_"), quote! {}),
+                        None => (quote!{#ignore_prefix _}, quote! {}),
                     },
                 };
 
-                Ok((quote! {#final_fieldid}, extraction))
+                Ok((final_fieldid, extraction))
             },
         )
         .collect();
