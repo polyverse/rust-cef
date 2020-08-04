@@ -60,10 +60,10 @@ fn test_cef_extensions() {
         name_struct: NameStruct {
             name: "NS1".to_owned(),
         },
-        name_struct2: NameStruct {
+        name_struct2: Some(NameStruct {
             name: "NS2".to_owned(),
-        },
-        address: "An address of some sort".to_owned(),
+        }),
+        address: Some("An address of some sort".to_owned()),
         age: 42,
     };
 
@@ -71,7 +71,7 @@ fn test_cef_extensions() {
     assert!(n2.cef_extensions(&mut collector).is_ok());
     assert_eq!(
         collector.get(&"newname".to_owned()),
-        Some(&"NS1".to_owned())
+        Some(&"NS2".to_owned())
     );
     assert_eq!(
         collector.get(&"address".to_owned()),
@@ -79,7 +79,7 @@ fn test_cef_extensions() {
     );
     assert_eq!(
         collector.get(&"name2".to_owned()),
-        Some(&"NameStruct::NS2".to_owned())
+        Some(&"NameStruct::NS1".to_owned())
     );
     assert_eq!(
         collector.get(&"person_age".to_owned()),
@@ -93,19 +93,19 @@ fn test_complete_to_cef() {
         "ClassId234".to_owned(),
         NameInheritorStruct {
             name_struct: NameStruct {
-                name: "Test1".to_owned(),
-            },
-            name_struct2: NameStruct {
                 name: "Test2".to_owned(),
             },
-            address: "Address".to_owned(),
+            name_struct2: Some(NameStruct {
+                name: "Test1".to_owned(),
+            }),
+            address: Some("Address".to_owned()),
             age: 87,
         },
         24,
     );
     assert_eq!(
         v1.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test1|24|address=Address name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
+        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test2|24|address=Address name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
     );
 
     let v2 = Top::V2 {
@@ -114,10 +114,10 @@ fn test_complete_to_cef() {
             name_struct: NameStruct {
                 name: "Test2".to_owned(),
             },
-            name_struct2: NameStruct {
+            name_struct2: Some(NameStruct {
                 name: "Test1".to_owned(),
-            },
-            address: "Address2".to_owned(),
+            }),
+            address: Some("Address2".to_owned()),
             age: 78,
         },
         severity: 85,
@@ -126,7 +126,29 @@ fn test_complete_to_cef() {
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 address=Address2 name2=NameStruct::Test1 newname=Test2 person_age=78 severity=85"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 address=Address2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
+    );
+
+
+    let v2 = Top::V2 {
+        event_class: "ClassId234",
+        name_impl: NameInheritorStruct {
+            name_struct: NameStruct {
+                name: "Test2".to_owned(),
+            },
+            name_struct2: Some(NameStruct {
+                name: "Test1".to_owned(),
+            }),
+            address: None,
+            age: 78,
+        },
+        severity: 85,
+        unused: 20,
+    };
+
+    assert_eq!(
+        v2.to_cef().unwrap(),
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
     );
 }
 
@@ -258,15 +280,15 @@ struct NameInheritorStruct {
     // #[cef_ext_field]
     // would do: name_struct.to_string()
     // but we want to gobble extension field's created inside NameStruct
-    #[cef_ext_gobble]
+    #[cef_ext_field(name2)]
     #[cef_inherit(CefHeaderName)]
     pub name_struct: NameStruct,
 
-    #[cef_ext_field]
-    pub address: String,
+    #[cef_ext_optional_field]
+    pub address: Option<String>,
 
-    #[cef_ext_field(name2)]
-    pub name_struct2: NameStruct,
+    #[cef_ext_optional_gobble]
+    pub name_struct2: Option<NameStruct>,
 
     #[cef_ext_field(person_age)]
     pub age: usize,

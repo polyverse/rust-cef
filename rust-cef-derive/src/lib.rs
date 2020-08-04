@@ -81,7 +81,7 @@ pub fn derive_cef_header_severity(item_tokens: TokenStream) -> TokenStream {
     implement_header_trait("CefHeaderSeverity", item_tokens)
 }
 
-#[proc_macro_derive(CefExtensions, attributes(cef_ext_field, cef_ext_gobble))]
+#[proc_macro_derive(CefExtensions, attributes(cef_ext_field, cef_ext_gobble, cef_ext_optional_field, cef_ext_optional_gobble, cef_ext_gobble_kv_iterator, cef_ext_optional_gobble_kv_iterator))]
 pub fn derive_cef_extensions(input: TokenStream) -> TokenStream {
     implement_extensions_trait(input)
 }
