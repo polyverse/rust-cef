@@ -313,3 +313,12 @@ impl Display for NameStruct {
         write!(f, "NameStruct::{}", self.name)
     }
 }
+
+#[derive(CefExtensions)]
+struct HoldsExtensionsInHashMap {
+    #[cef_ext_gobble_kv_iterator]
+    pub ext: HashMap<String, String>
+
+    #[cef_ext_optional_gobble_kv_iterator]
+    pub optext: Option<HashMap<String, String>>
+}
