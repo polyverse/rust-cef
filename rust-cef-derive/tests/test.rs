@@ -5,6 +5,18 @@ use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
+macro_rules! map(
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = ::std::collections::HashMap::new();
+            $(
+                m.insert($key, $value);
+            )+
+            m
+        }
+     };
+);
+
 #[test]
 fn test_cef_fixed_headers_fails() {
     let _t = trybuild::TestCases::new();
@@ -102,10 +114,16 @@ fn test_complete_to_cef() {
             age: 87,
         },
         24,
+        HoldsExtensionsInHashMap {
+            ext: map!("extkey1".to_owned() => "hashtablevalue1".to_owned(), "extkey2".to_owned() => "hashtablevalue2".to_owned()),
+            optext: Some(
+                map!("extoptkey1".to_owned() => "behindoptional1".to_owned(), "extoptkey2".to_owned() => "behindoptional2".to_owned()),
+            ),
+        },
     );
     assert_eq!(
         v1.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test2|24|address=Address name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
+        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test2|24|address=Address extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
     );
 
     let v2 = Top::V2 {
@@ -121,14 +139,19 @@ fn test_complete_to_cef() {
             age: 78,
         },
         severity: 85,
+        ext: HoldsExtensionsInHashMap {
+            ext: map!("extkey1".to_owned() => "hashtablevalue1".to_owned(), "extkey2".to_owned() => "hashtablevalue2".to_owned()),
+            optext: Some(
+                map!("extoptkey1".to_owned() => "behindoptional1".to_owned(), "extoptkey2".to_owned() => "behindoptional2".to_owned()),
+            ),
+        },
         unused: 20,
     };
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 address=Address2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 address=Address2 extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
     );
-
 
     let v2 = Top::V2 {
         event_class: "ClassId234",
@@ -143,12 +166,18 @@ fn test_complete_to_cef() {
             age: 78,
         },
         severity: 85,
+        ext: HoldsExtensionsInHashMap {
+            ext: map!("extkey1".to_owned() => "hashtablevalue1".to_owned(), "extkey2".to_owned() => "hashtablevalue2".to_owned()),
+            optext: Some(
+                map!("extoptkey1".to_owned() => "behindoptional1".to_owned(), "extoptkey2".to_owned() => "behindoptional2".to_owned()),
+            ),
+        },
         unused: 20,
     };
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
     );
 }
 
@@ -251,6 +280,7 @@ enum Top {
         #[cef_ext_gobble]
         NameInheritorStruct,
         #[cef_field(CefHeaderSeverity)] usize,
+        #[cef_ext_gobble] HoldsExtensionsInHashMap,
     ),
 
     #[cef_values(CefHeaderDeviceVersion = "V2")]
@@ -266,6 +296,9 @@ enum Top {
         #[cef_ext_field]
         #[cef_field(CefHeaderSeverity)]
         severity: usize,
+
+        #[cef_ext_gobble]
+        ext: HoldsExtensionsInHashMap,
 
         unused: usize,
     },
@@ -317,8 +350,8 @@ impl Display for NameStruct {
 #[derive(CefExtensions)]
 struct HoldsExtensionsInHashMap {
     #[cef_ext_gobble_kv_iterator]
-    pub ext: HashMap<String, String>
+    pub ext: HashMap<String, String>,
 
     #[cef_ext_optional_gobble_kv_iterator]
-    pub optext: Option<HashMap<String, String>>
+    pub optext: Option<HashMap<String, String>>,
 }

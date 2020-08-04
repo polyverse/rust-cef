@@ -429,8 +429,12 @@ fn destructure_and_match_variant(variant: &Variant) -> OptionalCompileResult {
                 // see if there's any field-level cef_inherit or cef_field attributes on the variant
 
                 let (fieldid, ignore_prefix, field_name_from_id) = match &f.ident {
-                    Some(id) => (id.clone(), quote!{#id:}, FieldNameFromId::Allowed),
-                    None => (format_ident!("index{}", index), quote!{}, FieldNameFromId::NotAllowed),
+                    Some(id) => (id.clone(), quote! {#id:}, FieldNameFromId::Allowed),
+                    None => (
+                        format_ident!("index{}", index),
+                        quote! {},
+                        FieldNameFromId::NotAllowed,
+                    ),
                 };
 
                 let (final_fieldid, extraction) = match field_extraction(
@@ -447,7 +451,7 @@ fn destructure_and_match_variant(variant: &Variant) -> OptionalCompileResult {
                         // No extraction for this field
                         // first, capture fieldid as "_" to ignore it (good practice)
                         // and give it an empty extraction
-                        None => (quote!{#ignore_prefix _}, quote! {}),
+                        None => (quote! {#ignore_prefix _}, quote! {}),
                     },
                 };
 
@@ -504,7 +508,7 @@ fn field_extraction(
 ) -> Result<Option<TokenStream2>, TokenStream2> {
     // look for field attributes
     let values_for_field_result: CollectedCompileResult = attrs.iter()
-        .filter(|attr| attr.path.is_ident("cef_ext_gobble") || attr.path.is_ident("cef_ext_optional_gobble") || attr.path.is_ident("cef_ext_field") || attr.path.is_ident("cef_ext_optional_field") || attr.path.is_ident("cef_ext_gobble_kv_iterator"))
+        .filter(|attr| attr.path.is_ident("cef_ext_gobble") || attr.path.is_ident("cef_ext_optional_gobble") || attr.path.is_ident("cef_ext_field") || attr.path.is_ident("cef_ext_optional_field") || attr.path.is_ident("cef_ext_gobble_kv_iterator")|| attr.path.is_ident("cef_ext_optional_gobble_kv_iterator"))
         .map(|attr| {
             let (usage_message, value_type, optional) = match attr.path.get_ident() {
                 None => return Err(SynError::new(attr.span(), format!("attribute should have an 'ident', and the internal filter should have protected you from it. This is a bug in rust-cef-derive crate.")).to_compile_error()),
@@ -625,7 +629,7 @@ fn field_value<T: quote::ToTokens>(
                     },
                     None => {},
                 };
-            }
+            },
         },
         false => match value_type {
             FieldValueType::GobbleTrait => quote! {
@@ -641,7 +645,7 @@ fn field_value<T: quote::ToTokens>(
                 for (key, value) in #maybe_self#field_ident {
                     collector.insert(key.to_string(), value.to_string());
                 };
-            }
-        }
+            },
+        },
     }
 }
