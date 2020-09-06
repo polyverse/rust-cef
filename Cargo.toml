@@ -1,6 +1,6 @@
 [package]
 name = "rust-cef"
-version = "0.0.5"
+version = "0.1.0"
 edition = "2018"
 license-file = "LICENSE"
 readme = "README.md"

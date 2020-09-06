@@ -117,19 +117,19 @@ pub trait ToCef:
         let mut cef_entry = String::new();
         cef_entry.push_str("CEF:");
         cef_entry.push_str(&self.cef_header_version()?);
-        cef_entry.push_str("|");
+        cef_entry.push('|');
         cef_entry.push_str(&self.cef_header_device_vendor()?);
-        cef_entry.push_str("|");
+        cef_entry.push('|');
         cef_entry.push_str(&self.cef_header_device_product()?);
-        cef_entry.push_str("|");
+        cef_entry.push('|');
         cef_entry.push_str(&self.cef_header_device_version()?);
-        cef_entry.push_str("|");
+        cef_entry.push('|');
         cef_entry.push_str(&self.cef_header_device_event_class_id()?);
-        cef_entry.push_str("|");
+        cef_entry.push('|');
         cef_entry.push_str(&self.cef_header_name()?);
-        cef_entry.push_str("|");
+        cef_entry.push('|');
         cef_entry.push_str(&self.cef_header_severity()?);
-        cef_entry.push_str("|");
+        cef_entry.push('|');
         cef_entry.push_str(extensionsstr.as_str());
 
         Ok(cef_entry)
