@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/polyverse/rust-cef.svg?branch=master)](https://travis-ci.com/polyverse/rust-cef)
+
 # rust-cef
 
 A simple trait that allows any Rust item (struct, enum, etc.) to be serialized as a
