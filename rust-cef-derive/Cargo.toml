@@ -17,7 +17,7 @@ as CEF log entries that can be written to log files or syslog."""
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0.40"}
+syn = "1.0.40"
 quote = "1.0.7"
 proc-macro2 = "1.0.20"
 lazy_static = "1.4.0"
