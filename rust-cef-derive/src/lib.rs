@@ -89,7 +89,8 @@ pub fn derive_cef_header_severity(item_tokens: TokenStream) -> TokenStream {
         cef_ext_optional_field,
         cef_ext_optional_gobble,
         cef_ext_gobble_kv_iterator,
-        cef_ext_optional_gobble_kv_iterator
+        cef_ext_optional_gobble_kv_iterator,
+        cef_ext_values
     )
 )]
 pub fn derive_cef_extensions(input: TokenStream) -> TokenStream {

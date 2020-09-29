@@ -123,7 +123,7 @@ fn test_complete_to_cef() {
     );
     assert_eq!(
         v1.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test2|24|address=Address extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
+        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test2|24|EnumV1Field=fixedExtensionsValue TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue address=Address extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
     );
 
     let v2 = Top::V2 {
@@ -150,7 +150,7 @@ fn test_complete_to_cef() {
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 address=Address2 extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EnumV2Field=fixedExtensionsValue EventClassNewName=ClassId234 TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue address=Address2 extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
     );
 
     let v2 = Top::V2 {
@@ -177,7 +177,7 @@ fn test_complete_to_cef() {
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EventClassNewName=ClassId234 extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EnumV2Field=fixedExtensionsValue EventClassNewName=ClassId234 TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue extkey1=hashtablevalue1 extkey2=hashtablevalue2 extoptkey1=behindoptional1 extoptkey2=behindoptional2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
     );
 }
 
@@ -269,9 +269,11 @@ impl CefHeaderVersion for ManualAndFixedHeaders {
     CefHeaderDeviceProduct = "zerotect"
 )]
 #[derive(ToCef)]
+#[cef_ext_values(TopEnumField = "fixedExtensionsValue")]
 enum Top {
     // Name will use the display trait, rather than inheriting the CefHeaderName trait
     #[cef_values(CefHeaderDeviceVersion = "V1")]
+    #[cef_ext_values(EnumV1Field = "fixedExtensionsValue")]
     V1(
         #[cef_field(CefHeaderDeviceEventClassID)]
         #[cef_ext_field(top_name)]
@@ -284,6 +286,7 @@ enum Top {
     ),
 
     #[cef_values(CefHeaderDeviceVersion = "V2")]
+    #[cef_ext_values(EnumV2Field = "fixedExtensionsValue")]
     V2 {
         #[cef_field(CefHeaderDeviceEventClassID)]
         #[cef_ext_field(EventClassNewName)]
@@ -308,6 +311,7 @@ enum Top {
 struct TupleStule(#[cef_inherit(CefHeaderName)] NameStruct);
 
 #[derive(CefHeaderName, CefExtensions)]
+#[cef_ext_values(TopStructField = "fixedExtensionsValue")]
 struct NameInheritorStruct {
     // using
     // #[cef_ext_field]
