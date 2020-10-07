@@ -621,47 +621,35 @@ fn field_value<T: quote::ToTokens>(
         PrefixSelf::No => quote! {},
     };
 
-    match optional {
-        true => match value_type {
-            FieldValueType::GobbleTrait => quote! {
-                match #maybe_self#field_ident {
-                    Some(val) => match rust_cef::CefExtensions::cef_extensions(val, collector) {
-                        Err(err) => return Err(err),
-                        Ok(()) => {},
-                    },
-                    None => {},
-                };
-            },
-            FieldValueType::DisplayTrait => quote! {
-                match #maybe_self#field_ident {
-                    Some(val) => {collector.insert(#field_name.to_owned(), format!("{}", val));},
-                    None => {},
-                };
-            },
-            FieldValueType::KvIterator => quote! {
-                match #maybe_self#field_ident {
-                    Some(kviter) => for (key, value) in kviter {
-                        collector.insert(key.to_string(), value.to_string());
-                    },
-                    None => {},
-                };
-            },
+    let field_value_ts = match value_type {
+        FieldValueType::GobbleTrait => quote! {
+            match rust_cef::CefExtensions::cef_extensions(val, collector) {
+                Err(err) => return Err(err),
+                Ok(()) => {},
+            }
         },
-        false => match value_type {
-            FieldValueType::GobbleTrait => quote! {
-                match rust_cef::CefExtensions::cef_extensions(#maybe_self#field_ident, collector) {
-                    Err(err) => return Err(err),
-                    Ok(()) => {},
-                };
-            },
-            FieldValueType::DisplayTrait => quote! {
-                collector.insert(#field_name.to_owned(), format!("{}", #maybe_self#field_ident));
-            },
-            FieldValueType::KvIterator => quote! {
-                for (key, value) in #maybe_self#field_ident {
-                    collector.insert(key.to_string(), value.to_string());
-                };
-            },
+        FieldValueType::DisplayTrait => quote! {
+            {collector.insert(#field_name.to_owned(), format!("{}", val));}
+        },
+        FieldValueType::KvIterator => quote! {
+            for (key, value) in val {
+                collector.insert(key.to_string(), value.to_string());
+            }
+        },
+    };
+
+    match optional {
+        true => quote! {
+            match #maybe_self#field_ident {
+                Some(val) => #field_value_ts,
+                None => {},
+            };
+        },
+        false => quote! {
+            {
+                let val = #maybe_self#field_ident;
+                #field_value_ts
+            }
         },
     }
 }
