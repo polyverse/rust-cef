@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate rust_cef_derive;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, TimeZone};
 use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -103,10 +103,11 @@ fn test_complete_to_cef() {
             age: 87,
         },
         24,
+        Utc.timestamp_millis(735027350723),
     );
     assert_eq!(
         v1.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test2|24|EnumV1Field=fixedExtensionsValue TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue address=Address name2=NameStruct::Test2 newname=Test1 person_age=87 top_name=ClassId234"
+        "CEF:1|polyverse|zerotect|V1|ClassId234|NameInheritorStruct::NameStruct::Test2|24|EnumV1Field=fixedExtensionsValue TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue address=Address name2=NameStruct::Test2 newname=Test1 person_age=87 rt=735027350723 top_name=ClassId234"
     );
 
     let v2 = Top::V2 {
@@ -123,11 +124,12 @@ fn test_complete_to_cef() {
         },
         severity: 85,
         unused: 20,
+        timestamp: Utc.timestamp_millis(326262362),
     };
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EnumV2Field=fixedExtensionsValue EventClassNewName=ClassId234 TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue address=Address2 name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EnumV2Field=fixedExtensionsValue EventClassNewName=ClassId234 TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue address=Address2 name2=NameStruct::Test2 newname=Test1 person_age=78 rt=326262362 severity=85"
     );
 
     let v2 = Top::V2 {
@@ -144,11 +146,12 @@ fn test_complete_to_cef() {
         },
         severity: 85,
         unused: 20,
+        timestamp: Utc.timestamp_millis(9893486324),
     };
 
     assert_eq!(
         v2.to_cef().unwrap(),
-        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EnumV2Field=fixedExtensionsValue EventClassNewName=ClassId234 TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue name2=NameStruct::Test2 newname=Test1 person_age=78 severity=85"
+        "CEF:1|polyverse|zerotect|V2|ClassId234|Test2|85|EnumV2Field=fixedExtensionsValue EventClassNewName=ClassId234 TopEnumField=fixedExtensionsValue TopStructField=fixedExtensionsValue name2=NameStruct::Test2 newname=Test1 person_age=78 rt=9893486324 severity=85"
     );
 }
 
