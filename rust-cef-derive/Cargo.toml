@@ -33,3 +33,4 @@ path = "tests/test.rs"
 [dev-dependencies]
 # https://github.com/dtolnay/trybuild
 trybuild = { version = "1.0", features = ["diff"] }
+chrono = "0.4.19"

@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rust_cef_derive;
 
+use chrono::{DateTime, Utc};
 use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -252,6 +253,9 @@ enum Top {
         #[cef_ext_gobble]
         NameInheritorStruct,
         #[cef_field(CefHeaderSeverity)] usize,
+
+        #[cef_ext_gobble]
+        DateTime<Utc>,
     ),
 
     #[cef_values(CefHeaderDeviceVersion = "V2")]
@@ -268,6 +272,9 @@ enum Top {
         #[cef_ext_field]
         #[cef_field(CefHeaderSeverity)]
         severity: usize,
+
+        #[cef_ext_gobble]
+        timestamp: DateTime<Utc>,
 
         unused: usize,
     },
