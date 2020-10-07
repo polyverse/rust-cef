@@ -120,7 +120,7 @@ fn header_value_from_child_item(
         Data::Struct(s) => header_value_from_child_struct(header_name, method_name, s, item),
         Data::Enum(e) => header_value_from_child_enum(header_name, method_name, e, item),
         _ => {
-            return SynError::new(Span::call_site(), CEF_ATTRIBUTE_APPLICATION.to_owned())
+            SynError::new(Span::call_site(), CEF_ATTRIBUTE_APPLICATION.to_owned())
                 .to_compile_error()
         }
     }
@@ -243,9 +243,7 @@ fn header_value_from_child_struct(
                                     ),
                                 };
 
-                                let span = p.span().clone();
-
-                                let tv = TraitValue { ts, span };
+                                let tv = TraitValue { ts, span: p.span() };
 
                                 trait_values.push(tv);
                             }
@@ -258,16 +256,16 @@ fn header_value_from_child_struct(
     }
 
     match trait_values.len() {
-        0 => return SynError::new(Span::call_site(), CEF_HEADER_MISSING_VALUES_OR_INHERIT.to_owned()).to_compile_error(),
-        1 => return match trait_values.pop() {
+        0 => SynError::new(Span::call_site(), CEF_HEADER_MISSING_VALUES_OR_INHERIT.to_owned()).to_compile_error(),
+        1 => match trait_values.pop() {
             Some(tv) => tv.ts,
-            None => return SynError::new(Span::call_site(), "FATAL Error in this macro. Thought it generated a value, but it apparently did not.".to_owned()).to_compile_error(),
+            None => SynError::new(Span::call_site(), "FATAL Error in this macro. Thought it generated a value, but it apparently did not.".to_owned()).to_compile_error(),
         },
         _ => {
-            let errs = trait_values.iter().map(|tv| {
-                return SynError::new(tv.span, format!("Trait {} had values provided in multiple places. Please remove all but one of these.", header_name))
-                    .to_compile_error();
-            });
+            let errs = trait_values.iter().map(|tv|
+                SynError::new(tv.span, format!("Trait {} had values provided in multiple places. Please remove all but one of these.", header_name))
+                    .to_compile_error()
+            );
 
             quote!{
                 #(#errs)*
@@ -481,16 +479,16 @@ fn header_value_from_child_enum(
     }
 
     match trait_values.len() {
-        0 => return SynError::new(Span::call_site(), CEF_HEADER_MISSING_VALUES_OR_INHERIT.to_owned()).to_compile_error(),
+        0 => SynError::new(Span::call_site(), CEF_HEADER_MISSING_VALUES_OR_INHERIT.to_owned()).to_compile_error(),
         1 => match trait_values.pop() {
             Some(tv) => tv.ts,
-            None => return SynError::new(Span::call_site(), "FATAL Error in this macro. Thought it generated a value, but it apparently did not.".to_owned()).to_compile_error(),
+            None => SynError::new(Span::call_site(), "FATAL Error in this macro. Thought it generated a value, but it apparently did not.".to_owned()).to_compile_error(),
         },
         _ => {
-            let errs = trait_values.iter().map(|tv| {
-                return SynError::new(tv.span, format!("Trait {} had values provided in multiple places. Please remove all but one of these.", header_name))
-                    .to_compile_error();
-            });
+            let errs = trait_values.iter().map(|tv|
+                SynError::new(tv.span, format!("Trait {} had values provided in multiple places. Please remove all but one of these.", header_name))
+                    .to_compile_error()
+            );
 
             quote!{
                 #(#errs)*
@@ -520,7 +518,7 @@ fn all_variants_cef_value(
     };
 
     // No implementations from variant
-    if match_branches.len() == 0 {
+    if match_branches.is_empty() {
         return None;
     }
 
@@ -650,10 +648,10 @@ fn destructure_and_match_variant(
             None => return Err(SynError::new(Span::call_site(), "FATAL Error in this macro. Thought it generated a value, but it apparently did not.".to_owned()).to_compile_error()),
         },
         _ => {
-            let errs = trait_values.iter().map(|tv| {
-                return SynError::new(tv.span, format!("Trait {} had values provided in multiple places for variant {}. Please remove all but one of these.", header_name, ident))
-                    .to_compile_error();
-            });
+            let errs = trait_values.iter().map(|tv|
+                SynError::new(tv.span, format!("Trait {} had values provided in multiple places for variant {}. Please remove all but one of these.", header_name, ident))
+                    .to_compile_error()
+            );
 
             return Err(quote!{
                 #(#errs)*
@@ -712,12 +710,11 @@ fn variant_field_value(
                                 fieldid,
                                 PrefixSelf::No,
                             );
-                            let span = p.span().clone();
 
                             // no longer ignore the ident
                             ignore_ident = false;
 
-                            trait_values.push(TraitValue { ts, span });
+                            trait_values.push(TraitValue { ts, span: p.span() });
                         }
                     }
                 }
@@ -855,7 +852,7 @@ fn field_value<T: quote::ToTokens>(
 ///
 fn top_level_cef_values(
     header_name: &Ident,
-    attrs: &Vec<Attribute>,
+    attrs: &[Attribute],
     trait_values: &mut Vec<TraitValue>,
 ) -> Option<TokenStream2> {
     for attr in attrs {
@@ -879,7 +876,7 @@ fn top_level_cef_values(
                                     let ts = quote! {
                                         Ok(#strval.to_owned())
                                     };
-                                    let span = mnv.span().clone();
+                                    let span = mnv.span();
                                     trait_values.push(TraitValue { ts, span });
                                 }
                                 _ => {
