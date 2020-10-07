@@ -1,7 +1,7 @@
 /// Copyright 2020 Polyverse Corporation
 ///
 /// This module provides functions to implement the CefExtensions trait
-use crate::helpers::{is_valid_item_type, CEF_ATTRIBUTE_APPLICATION};
+use crate::helpers::{is_valid_item_type, parse_attrs_to_name_value, ParseAttrResult, CEF_ATTRIBUTE_APPLICATION};
 use crate::proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::convert::From;
@@ -42,8 +42,6 @@ enum FieldIdentity {
 type CollectedCompileResult = Result<Vec<TokenStream2>, TokenStream2>;
 type OptionalCompileResult = Result<Option<TokenStream2>, TokenStream2>;
 type OptionalCollectedCompileResult = Result<Vec<Option<TokenStream2>>, TokenStream2>;
-
-type ParseAttrResult<T> = Result<T, TokenStream2>;
 
 /// Implements the trait asked by any of the `#[derive(CefHeader*)]` attributes
 /// It creates the trait skeleton and outsources the returned value
@@ -578,11 +576,8 @@ fn parse_attrs_to_path(attr: &Attribute, messsage: &str) -> ParseAttrResult<Opti
                 0 | 1 => match ml.nested.first() {
                     None => Ok(None),
                     Some(nm) => match nm {
-                        NestedMeta::Meta(m) => match m {
-                            Meta::Path(p) => match p.get_ident() {
-                                Some(ident) => Ok(Some(ident.to_string())),
-                                _ => Err(SynError::new(attr.span(), messsage).to_compile_error()),
-                            },
+                        NestedMeta::Meta(Meta::Path(p)) => match p.get_ident() {
+                            Some(ident) => Ok(Some(ident.to_string())),
                             _ => Err(SynError::new(attr.span(), messsage).to_compile_error()),
                         },
                         _ => Err(SynError::new(attr.span(), messsage).to_compile_error()),
@@ -728,41 +723,4 @@ fn top_level_cef_ext_values(attrs: &[Attribute]) -> Vec<TokenStream2> {
     }
 
     retval
-}
-
-// Helps cut through a lot of parse tree and doesn't confuse reading-context
-fn parse_attrs_to_name_value(
-    attr: &Attribute,
-    message: &str,
-) -> ParseAttrResult<Vec<MetaNameValue>> {
-    let mut mnvs: Vec<MetaNameValue> = vec![];
-
-    match attr.parse_meta() {
-        Err(e) => return Err(e.to_compile_error()),
-        Ok(metadata) => match metadata {
-            Meta::List(list) => {
-                for nestedmeta in list.nested {
-                    match nestedmeta {
-                        NestedMeta::Meta(meta) => match meta {
-                            Meta::NameValue(mnv) => {
-                                mnvs.push(mnv);
-                            }
-                            _ => {
-                                return Err(SynError::new(attr.span(), message.to_owned())
-                                    .to_compile_error())
-                            }
-                        },
-                        _ => {
-                            return Err(
-                                SynError::new(attr.span(), message.to_owned()).to_compile_error()
-                            )
-                        }
-                    }
-                }
-            }
-            _ => return Err(SynError::new(attr.span(), message.to_owned()).to_compile_error()),
-        },
-    }
-
-    Ok(mnvs)
 }

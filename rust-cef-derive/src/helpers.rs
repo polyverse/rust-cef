@@ -1,9 +1,16 @@
 use crate::proc_macro::TokenStream;
-use proc_macro2::Span;
+use inflections::case::to_snake_case;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::convert::From;
-use syn::{Data, DeriveInput, Error as SynError};
+use syn::spanned::Spanned;
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error as SynError, Field, Fields, Ident,
+    Index, Lit, Meta, NestedMeta, MetaNameValue, Path, Variant,
+};
 
 pub const CEF_ATTRIBUTE_APPLICATION: &str = "This attribute only applies to Structs or Enums.";
+
+pub type ParseAttrResult<T> = Result<T, TokenStream2>;
 
 pub fn is_valid_item_type(item: &DeriveInput) -> Option<TokenStream> {
     // Only applies to structs and enums
@@ -17,4 +24,29 @@ pub fn is_valid_item_type(item: &DeriveInput) -> Option<TokenStream> {
     }
 
     None
+}
+
+// Helps cut through a lot of parse tree and doesn't confuse reading-context
+pub fn parse_attrs_to_name_value(
+    attr: &Attribute,
+    message: &str,
+) -> ParseAttrResult<Vec<MetaNameValue>> {
+    let mut mnvs: Vec<MetaNameValue> = vec![];
+
+    match attr.parse_meta() {
+        Err(e) => return Err(e.to_compile_error()),
+        Ok(Meta::List(list)) => {
+            for nestedmeta in list.nested {
+                match nestedmeta {
+                    NestedMeta::Meta(Meta::NameValue(mnv)) => {
+                        mnvs.push(mnv);
+                    },
+                    _ => return Err(SynError::new(attr.span(), message.to_owned()).to_compile_error()),
+                }
+            }
+        }
+        Ok(_) => return Err(SynError::new(attr.span(), message.to_owned()).to_compile_error()),
+    }
+
+    Ok(mnvs)
 }
