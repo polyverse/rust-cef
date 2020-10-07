@@ -8,7 +8,7 @@ use std::convert::From;
 use syn::spanned::Spanned;
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Error as SynError, Fields, Ident, Index,
-    Lit, Meta, MetaNameValue, NestedMeta, Type, Variant,
+    Lit, Meta, NestedMeta, Type, Variant,
 };
 
 const CEF_EXT_VALUES_APPLICABLE: &str =
@@ -201,16 +201,16 @@ fn extensions_from_child_struct(s: &DataStruct) -> TokenStream2 {
         .iter()
         .enumerate()
         .map(|(index, field)| {
-            let field_identity = match &field.ident {
-                Some(ident) => FieldIdentity::Ident(ident.clone()),
-                None => FieldIdentity::Index(Index::from(index)),
+            let (field_identity, field_anme_from_id) = match &field.ident {
+                Some(ident) => (FieldIdentity::Ident(ident.clone()), FieldNameFromId::Allowed),
+                None => (FieldIdentity::Index(Index::from(index)), FieldNameFromId::NotAllowed),
             };
 
             // look for field attributes
             field_extraction(
                 &field.attrs,
                 field_identity,
-                FieldNameFromId::Allowed,
+                field_anme_from_id,
                 &field.ty,
                 &PrefixSelf::Yes,
                 field.span(),
@@ -531,26 +531,38 @@ fn field_extraction(
                 }
             };
 
-            match parse_attrs_to_path(&attr, usage_message.as_str()) {
-                Ok(None) => match &field_identity {
-                    FieldIdentity::Ident(fieldid) => match value_type {
-                        FieldValueType::GobbleTrait => Ok(field_value(fieldid.to_string().as_str(), fieldid, &field_type, &value_type, prefix_self)),
-                        FieldValueType::DisplayTrait if FieldNameFromId::Allowed == field_name_from_id => Ok(field_value(fieldid.to_string().as_str(), fieldid, &field_type, &value_type, prefix_self)),
-                        FieldValueType::DisplayTrait => Err(SynError::new(attr.span(), "'cef_ext_field' should have a single parameter with the field name when used on unnamed fields. Cannot use tuple index as a cef key.".to_owned()).to_compile_error()),
-                    },
-                    FieldIdentity::Index(index) => match value_type {
-                        FieldValueType::GobbleTrait => Ok(field_value("ignored", index, &field_type, &value_type, prefix_self)),
+            // Do we have a named or index field?
+            match &field_identity {
+
+                // if named...
+                FieldIdentity::Ident(fieldid) => match value_type {
+                    // Gobble is fine.
+                    FieldValueType::GobbleTrait => Ok(field_value(fieldid.to_string().as_str(), fieldid, &field_type, &value_type, prefix_self)),
+
+                    // When exposed as named...
+                    FieldValueType::DisplayTrait => match parse_attrs_to_path(&attr, usage_message.as_str())? {
+                        // renamed? - use new name!
+                        Some(newfield) => Ok(field_value(newfield.as_str(), fieldid, &field_type, &value_type, prefix_self)),
+
+                        // Not renamed? But allowed to use field-id? Use field-id.
+                        None if FieldNameFromId::Allowed == field_name_from_id => Ok(field_value(fieldid.to_string().as_str(), fieldid, &field_type, &value_type, prefix_self)),
+
+                        // Not renamed, and not allowed field-id as name? Error - how are we supposed to name it?
                         _ => Err(SynError::new(attr.span(), "'cef_ext_field' should have a single parameter with the field name when used on unnamed fields. Cannot use tuple index as a cef key.".to_owned()).to_compile_error()),
                     },
                 },
-                Ok(Some(newfield)) => match &field_identity {
-                    FieldIdentity::Ident(fieldid) => Ok(field_value(newfield.as_str(), fieldid, &field_type, &value_type, prefix_self)),
-                    FieldIdentity::Index(index) => match value_type {
-                        FieldValueType::GobbleTrait => Ok(field_value("ignored", index, &field_type, &value_type, prefix_self)),
-                        FieldValueType::DisplayTrait => Ok(field_value(newfield.as_str(), index, &field_type, &value_type, prefix_self)),
+
+                // if index...
+                FieldIdentity::Index(index) => match value_type {
+                    // Gobble is fine.
+                    FieldValueType::GobbleTrait => Ok(field_value("ignored", index, &field_type, &value_type, prefix_self)),
+
+                    // When exposed as named - be sure to have specified a field name (none exists when indexed)
+                    FieldValueType::DisplayTrait => match parse_attrs_to_path(&attr, usage_message.as_str()) {
+                        Ok(Some(newfield)) => Ok(field_value(newfield.as_str(), index, &field_type, &value_type, prefix_self)),
+                        _ => Err(SynError::new(attr.span(), "'cef_ext_field' should have a single parameter with the field name when used on unnamed fields. Cannot use tuple index as a cef key.".to_owned()).to_compile_error()),
                     },
                 },
-                Err(e) => Err(e),
             }
         }).collect();
 

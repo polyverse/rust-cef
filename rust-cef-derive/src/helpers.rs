@@ -1,11 +1,10 @@
 use crate::proc_macro::TokenStream;
-use inflections::case::to_snake_case;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::convert::From;
 use syn::spanned::Spanned;
 use syn::{
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error as SynError, Field, Fields, Ident,
-    Index, Lit, Meta, NestedMeta, MetaNameValue, Path, Variant,
+    Attribute, Data, DeriveInput, Error as SynError,
+    Meta, NestedMeta, MetaNameValue,
 };
 
 pub const CEF_ATTRIBUTE_APPLICATION: &str = "This attribute only applies to Structs or Enums.";
