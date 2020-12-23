@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate rust_cef_derive;
 
-use chrono::{DateTime, TimeZone, Utc};
+use time::OffsetDateTime;
 use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -103,7 +103,7 @@ fn test_complete_to_cef() {
             age: 87,
         },
         24,
-        Utc.timestamp_millis(735027350723),
+        OffsetDateTime::from_unix_timestamp_nanos(735027350723000000),
     );
     assert_eq!(
         v1.to_cef().unwrap(),
@@ -124,7 +124,7 @@ fn test_complete_to_cef() {
         },
         severity: 85,
         unused: 20,
-        timestamp: Utc.timestamp_millis(326262362),
+        timestamp: OffsetDateTime::from_unix_timestamp_nanos(326262362000000),
     };
 
     assert_eq!(
@@ -146,7 +146,7 @@ fn test_complete_to_cef() {
         },
         severity: 85,
         unused: 20,
-        timestamp: Utc.timestamp_millis(9893486324),
+        timestamp: OffsetDateTime::from_unix_timestamp_nanos(9893486324000000),
     };
 
     assert_eq!(
@@ -256,7 +256,7 @@ enum Top {
         #[cef_ext_gobble]
         NameInheritorStruct,
         #[cef_field(CefHeaderSeverity)] usize,
-        #[cef_ext_gobble] DateTime<Utc>,
+        #[cef_ext_gobble] OffsetDateTime,
     ),
 
     #[cef_values(CefHeaderDeviceVersion = "V2")]
@@ -275,7 +275,7 @@ enum Top {
         severity: usize,
 
         #[cef_ext_gobble]
-        timestamp: DateTime<Utc>,
+        timestamp: OffsetDateTime,
 
         unused: usize,
     },
