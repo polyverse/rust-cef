@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// break by accident when making changes to Rust items.
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use chrono::{DateTime, Utc};
+use time::OffsetDateTime;
 
 /// An error consistently used all code
 /// in this module and sub-modules.
@@ -139,13 +139,15 @@ pub trait ToCef:
 
 /// Implement CefExtensions (since it's defined here) for type
 /// DateTime<Utc>
-impl CefExtensions for DateTime<Utc> {
-
+impl CefExtensions for OffsetDateTime {
     /// we serialize using:
     /// Milliseconds since January 1, 1970 (integer). (This time format supplies an integer
     /// with the count in milliseconds from January 1, 1970 to the time the event occurred.)
     fn cef_extensions(&self, collector: &mut HashMap<String, String>) -> CefExtensionsResult {
-        collector.insert("rt".to_owned(), format!("{}", self.timestamp_millis()));
+        collector.insert(
+            "rt".to_owned(),
+            format!("{}", self.unix_timestamp_nanos() / 1000000),
+        );
         Ok(())
     }
 }
@@ -156,7 +158,6 @@ impl CefExtensions for DateTime<Utc> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use chrono::TimeZone;
 
     struct GoodExample {}
 
@@ -288,7 +289,7 @@ mod test {
     #[test]
     fn test_ext_for_datetime() {
         let mut collector = HashMap::<String, String>::new();
-        let example = Utc.timestamp_millis(3435315515325);
+        let example = OffsetDateTime::from_unix_timestamp_nanos(3435315515325000000);
         let result = example.cef_extensions(&mut collector);
         assert!(result.is_ok());
 

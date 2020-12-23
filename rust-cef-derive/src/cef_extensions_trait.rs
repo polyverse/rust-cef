@@ -1,7 +1,9 @@
 /// Copyright 2020 Polyverse Corporation
 ///
 /// This module provides functions to implement the CefExtensions trait
-use crate::helpers::{is_valid_item_type, parse_attrs_to_name_value, ParseAttrResult, CEF_ATTRIBUTE_APPLICATION};
+use crate::helpers::{
+    is_valid_item_type, parse_attrs_to_name_value, ParseAttrResult, CEF_ATTRIBUTE_APPLICATION,
+};
 use crate::proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::convert::From;
@@ -202,8 +204,14 @@ fn extensions_from_child_struct(s: &DataStruct) -> TokenStream2 {
         .enumerate()
         .map(|(index, field)| {
             let (field_identity, field_anme_from_id) = match &field.ident {
-                Some(ident) => (FieldIdentity::Ident(ident.clone()), FieldNameFromId::Allowed),
-                None => (FieldIdentity::Index(Index::from(index)), FieldNameFromId::NotAllowed),
+                Some(ident) => (
+                    FieldIdentity::Ident(ident.clone()),
+                    FieldNameFromId::Allowed,
+                ),
+                None => (
+                    FieldIdentity::Index(Index::from(index)),
+                    FieldNameFromId::NotAllowed,
+                ),
             };
 
             // look for field attributes

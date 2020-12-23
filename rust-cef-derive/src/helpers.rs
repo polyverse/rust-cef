@@ -2,10 +2,7 @@ use crate::proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::convert::From;
 use syn::spanned::Spanned;
-use syn::{
-    Attribute, Data, DeriveInput, Error as SynError,
-    Meta, NestedMeta, MetaNameValue,
-};
+use syn::{Attribute, Data, DeriveInput, Error as SynError, Meta, MetaNameValue, NestedMeta};
 
 pub const CEF_ATTRIBUTE_APPLICATION: &str = "This attribute only applies to Structs or Enums.";
 
@@ -39,8 +36,12 @@ pub fn parse_attrs_to_name_value(
                 match nestedmeta {
                     NestedMeta::Meta(Meta::NameValue(mnv)) => {
                         mnvs.push(mnv);
-                    },
-                    _ => return Err(SynError::new(attr.span(), message.to_owned()).to_compile_error()),
+                    }
+                    _ => {
+                        return Err(
+                            SynError::new(attr.span(), message.to_owned()).to_compile_error()
+                        )
+                    }
                 }
             }
         }

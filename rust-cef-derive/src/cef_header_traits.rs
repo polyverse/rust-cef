@@ -1,7 +1,9 @@
 /// Copyright 2020 Polyverse Corporation
 ///
 /// This module provides functions to implement the CefHeader* traits
-use crate::helpers::{is_valid_item_type, parse_attrs_to_name_value, ParseAttrResult, CEF_ATTRIBUTE_APPLICATION};
+use crate::helpers::{
+    is_valid_item_type, parse_attrs_to_name_value, ParseAttrResult, CEF_ATTRIBUTE_APPLICATION,
+};
 use crate::proc_macro::TokenStream;
 use inflections::case::to_snake_case;
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -117,10 +119,8 @@ fn header_value_from_child_item(
     match &item.data {
         Data::Struct(s) => header_value_from_child_struct(header_name, method_name, s, item),
         Data::Enum(e) => header_value_from_child_enum(header_name, method_name, e, item),
-        _ => {
-            SynError::new(Span::call_site(), CEF_ATTRIBUTE_APPLICATION.to_owned())
-                .to_compile_error()
-        }
+        _ => SynError::new(Span::call_site(), CEF_ATTRIBUTE_APPLICATION.to_owned())
+            .to_compile_error(),
     }
 }
 
@@ -739,11 +739,11 @@ fn parse_attrs_to_path(attr: &Attribute, messsage: &str) -> ParseAttrResult<Vec<
                 match nested_meta {
                     NestedMeta::Meta(Meta::Path(p)) => {
                         paths.push(p);
-                    },
+                    }
                     _ => return Err(SynError::new(attr.span(), messsage).to_compile_error()),
                 }
             }
-        },
+        }
         Ok(_) => return Err(SynError::new(attr.span(), messsage).to_compile_error()),
         Err(e) => return Err(e.to_compile_error()),
     }
