@@ -1,3 +1,5 @@
+#[deny(warn(dead_code))]
+
 #[macro_use]
 extern crate rust_cef_derive;
 
