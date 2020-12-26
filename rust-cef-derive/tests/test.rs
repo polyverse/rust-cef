@@ -1,5 +1,3 @@
-#[deny(warn(dead_code))]
-
 #[macro_use]
 extern crate rust_cef_derive;
 
@@ -279,6 +277,8 @@ enum Top {
         #[cef_ext_gobble]
         timestamp: OffsetDateTime,
 
+        // `#[allow(dead_code)]` is an attribute that disables the `dead_code` lint
+        #[allow(dead_code)]
         unused: usize,
     },
 }
