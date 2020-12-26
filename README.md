@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/polyverse/rust-cef.svg?branch=master)](https://travis-ci.com/polyverse/rust-cef)
+![Build Status](https://github.com/polyverse/rust-cef/workflows/Build%20Status/badge.svg)
 
 # rust-cef
 
