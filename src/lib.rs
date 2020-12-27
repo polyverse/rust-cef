@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 /// Copyright 2020 Polyverse Corporation
 /// This module provides traits to allow arbitrary Rust items (structs, enums, etc.)
 /// to be converted into Common Event Format strings used by popular loggers around the world.
@@ -7,7 +8,6 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use time::OffsetDateTime;
-use std::collections::HashMap;
 
 /// An error consistently used all code
 /// in this module and sub-modules.

@@ -1,10 +1,10 @@
 #[macro_use]
 extern crate rust_cef_derive;
 
-use time::OffsetDateTime;
 use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use time::OffsetDateTime;
 
 #[test]
 fn test_cef_fixed_headers_fails() {
