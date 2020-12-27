@@ -13,12 +13,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-
+    strategy:
+      matrix:
+        operation: ["clippy", "test"]
     steps:
       - uses: actions/checkout@v2
 
-      - name: Clippy
-        run: docker run -v cargo-cache:/root/.cargo/registry -v $PWD:/volume --rm -t ghcr.io/polyverse/rust-dev-env/rust-dev-env:latest cargo clippy --all
-
-      - name: Test
-        run: docker run -v cargo-cache:/root/.cargo/registry -v $PWD:/volume --rm -t ghcr.io/polyverse/rust-dev-env/rust-dev-env:latest cargo test --all
+      - name: ${{matrix.operation}}
+        run: docker run -v cargo-cache:/root/.cargo/registry -v $PWD:/volume --rm -t ghcr.io/polyverse/rust-dev-env/rust-dev-env:latest cargo ${{matrix.operation}} --all
