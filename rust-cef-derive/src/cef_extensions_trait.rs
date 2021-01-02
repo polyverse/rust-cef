@@ -7,11 +7,13 @@ use crate::helpers::{
 use crate::proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use std::convert::From;
-use syn::spanned::Spanned;
 use syn::{
+    parse_macro_input,
+    spanned::Spanned,
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Error as SynError, Fields, Ident, Index,
     Lit, Meta, NestedMeta, Type, Variant,
 };
+use quote::{quote, format_ident};
 
 const CEF_EXT_VALUES_APPLICABLE: &str =
     "'cef_ext_values' macro may apply on a Struct, Enum or Enum::Variant, but never on fields";

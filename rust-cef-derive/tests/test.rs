@@ -1,5 +1,6 @@
-#[macro_use]
-extern crate rust_cef_derive;
+use rust_cef_derive::{CefHeaderVersion, CefHeaderName, CefHeaderDeviceVersion,
+     CefHeaderDeviceVendor, CefHeaderDeviceProduct, CefHeaderDeviceEventClassID, CefHeaderSeverity,
+    ToCef, CefExtensions};
 
 use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
 use std::collections::HashMap;

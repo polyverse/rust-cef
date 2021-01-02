@@ -6,12 +6,8 @@
 ///
 extern crate proc_macro;
 extern crate proc_macro2;
-#[macro_use]
-extern crate quote;
-#[macro_use]
-extern crate syn;
-#[macro_use]
-extern crate lazy_static;
+
+use quote::quote;
 
 mod cef_extensions_trait;
 mod cef_header_traits;
@@ -21,7 +17,7 @@ use crate::proc_macro::TokenStream;
 use cef_extensions_trait::implement_extensions_trait;
 use cef_header_traits::implement_header_trait;
 use std::convert::From;
-use syn::DeriveInput;
+use syn::{parse_macro_input, DeriveInput};
 
 /// This macro derives the ToCef trait on the annotated item.
 /// For now, the ToCef trait itself provides a useful implementation
