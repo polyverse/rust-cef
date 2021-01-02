@@ -6,16 +6,15 @@ use crate::helpers::{
 };
 use crate::proc_macro::TokenStream;
 use inflections::case::to_snake_case;
+use lazy_static::lazy_static;
 use proc_macro2::{Span, TokenStream as TokenStream2};
+use quote::{format_ident, quote};
 use std::convert::From;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input,
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Error as SynError, Field, Fields, Ident,
-    Index, Lit, Meta, NestedMeta, Path, Variant,
+    parse_macro_input, Attribute, Data, DataEnum, DataStruct, DeriveInput, Error as SynError,
+    Field, Fields, Ident, Index, Lit, Meta, NestedMeta, Path, Variant,
 };
-use quote::{quote, format_ident};
-use lazy_static::lazy_static;
 
 const CEF_ALLOWED_HEADERS: &[&str] = &[
     "Version",

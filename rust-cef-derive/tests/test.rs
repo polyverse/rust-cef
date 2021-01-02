@@ -1,6 +1,7 @@
-use rust_cef_derive::{CefHeaderVersion, CefHeaderName, CefHeaderDeviceVersion,
-     CefHeaderDeviceVendor, CefHeaderDeviceProduct, CefHeaderDeviceEventClassID, CefHeaderSeverity,
-    ToCef, CefExtensions};
+use rust_cef_derive::{
+    CefExtensions, CefHeaderDeviceEventClassID, CefHeaderDeviceProduct, CefHeaderDeviceVendor,
+    CefHeaderDeviceVersion, CefHeaderName, CefHeaderSeverity, CefHeaderVersion, ToCef,
+};
 
 use rust_cef::{CefExtensions, CefHeaderName, CefHeaderVersion, ToCef};
 use std::collections::HashMap;
