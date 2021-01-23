@@ -21,3 +21,6 @@ members = [
 [dependencies]
 time = "0.2.23"
 
+[package.metadata.cargo-all-features]
+skip_optional_dependencies = true
+
