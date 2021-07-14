@@ -230,7 +230,7 @@ fn extensions_from_child_struct(s: &DataStruct) -> TokenStream2 {
         Err(e) => return e,
 
         // optional ts has type Vec<Option<TokenStream2>>
-        Ok(optionalts) => optionalts.into_iter().filter_map(|ots| ots).collect(),
+        Ok(optionalts) => optionalts.into_iter().flatten().collect(),
     };
 
     let extensions_impl = quote! {
@@ -365,7 +365,7 @@ fn extensions_from_child_enum(e: &DataEnum) -> TokenStream2 {
         .collect();
 
     let match_branches: Vec<TokenStream2> = match match_branches_result {
-        Ok(tses) => tses.into_iter().filter_map(|v| v).collect(),
+        Ok(tses) => tses.into_iter().flatten().collect(),
         Err(ts) => return ts,
     };
 

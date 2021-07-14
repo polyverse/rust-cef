@@ -513,7 +513,7 @@ fn all_variants_cef_value(
         .collect();
 
     let match_branches: Vec<TokenStream2> = match match_branches_result {
-        Ok(tses) => tses.into_iter().filter_map(|v| v).collect(),
+        Ok(tses) => tses.into_iter().flatten().collect(),
         Err(ts) => return Some(ts),
     };
 
