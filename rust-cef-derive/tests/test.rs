@@ -169,8 +169,8 @@ struct MultipleHeaders {}
 #[derive(CefHeaderName)]
 struct MultipleAttrs {}
 
-#[cef_values(CefHeaderVersion = "4234")]
 #[derive(CefHeaderVersion)]
+#[cef_values(CefHeaderVersion = "4234")]
 struct SingleHeader {}
 
 #[derive(
