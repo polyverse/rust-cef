@@ -1,6 +1,6 @@
 [package]
 name = "rust-cef-derive"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2018"
 license-file = "LICENSE"
 readme = "README.md"
@@ -24,7 +24,7 @@ lazy_static = "1.4.0"
 inflections = "1.1.1"
 
 # Always keep this in sync within the repo
-rust-cef = "0.2.2"
+rust-cef = "0.2.4"
 
 [[test]]
 name = "tests"
