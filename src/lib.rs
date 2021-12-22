@@ -289,7 +289,7 @@ mod test {
     #[test]
     fn test_ext_for_datetime() {
         let mut collector = HashMap::<String, String>::new();
-        let example = OffsetDateTime::from_unix_timestamp_nanos(3435315515325000000);
+        let example = OffsetDateTime::from_unix_timestamp_nanos(3435315515325000000).unwrap();
         let result = example.cef_extensions(&mut collector);
         assert!(result.is_ok());
 
