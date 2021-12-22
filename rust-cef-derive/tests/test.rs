@@ -126,7 +126,7 @@ fn test_complete_to_cef() {
         },
         severity: 85,
         unused: 20,
-        timestamp: OffsetDateTime::from_unix_timestamp_nanos(326262362000000),
+        timestamp: OffsetDateTime::from_unix_timestamp_nanos(326262362000000).unwrap(),
     };
 
     assert_eq!(
