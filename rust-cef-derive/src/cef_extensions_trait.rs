@@ -361,7 +361,7 @@ fn extensions_from_child_enum(e: &DataEnum) -> TokenStream2 {
     let match_branches_result: OptionalCollectedCompileResult = e
         .variants
         .iter()
-        .map(|variant| destructure_and_match_variant(&variant))
+        .map(destructure_and_match_variant)
         .collect();
 
     let match_branches: Vec<TokenStream2> = match match_branches_result {
@@ -545,15 +545,15 @@ fn field_extraction(
                 // if named...
                 FieldIdentity::Ident(fieldid) => match value_type {
                     // Gobble is fine.
-                    FieldValueType::GobbleTrait => Ok(field_value(fieldid.to_string().as_str(), fieldid, &field_type, &value_type, prefix_self)),
+                    FieldValueType::GobbleTrait => Ok(field_value(fieldid.to_string().as_str(), fieldid, field_type, &value_type, prefix_self)),
 
                     // When exposed as named...
-                    FieldValueType::DisplayTrait => match parse_attrs_to_path(&attr, usage_message.as_str())? {
+                    FieldValueType::DisplayTrait => match parse_attrs_to_path(attr, usage_message.as_str())? {
                         // renamed? - use new name!
-                        Some(newfield) => Ok(field_value(newfield.as_str(), fieldid, &field_type, &value_type, prefix_self)),
+                        Some(newfield) => Ok(field_value(newfield.as_str(), fieldid, field_type, &value_type, prefix_self)),
 
                         // Not renamed? But allowed to use field-id? Use field-id.
-                        None if FieldNameFromId::Allowed == field_name_from_id => Ok(field_value(fieldid.to_string().as_str(), fieldid, &field_type, &value_type, prefix_self)),
+                        None if FieldNameFromId::Allowed == field_name_from_id => Ok(field_value(fieldid.to_string().as_str(), fieldid, field_type, &value_type, prefix_self)),
 
                         // Not renamed, and not allowed field-id as name? Error - how are we supposed to name it?
                         _ => Err(SynError::new(attr.span(), "'cef_ext_field' should have a single parameter with the field name when used on unnamed fields. Cannot use tuple index as a cef key.".to_owned()).to_compile_error()),
@@ -563,11 +563,11 @@ fn field_extraction(
                 // if index...
                 FieldIdentity::Index(index) => match value_type {
                     // Gobble is fine.
-                    FieldValueType::GobbleTrait => Ok(field_value("ignored", index, &field_type, &value_type, prefix_self)),
+                    FieldValueType::GobbleTrait => Ok(field_value("ignored", index, field_type, &value_type, prefix_self)),
 
                     // When exposed as named - be sure to have specified a field name (none exists when indexed)
-                    FieldValueType::DisplayTrait => match parse_attrs_to_path(&attr, usage_message.as_str()) {
-                        Ok(Some(newfield)) => Ok(field_value(newfield.as_str(), index, &field_type, &value_type, prefix_self)),
+                    FieldValueType::DisplayTrait => match parse_attrs_to_path(attr, usage_message.as_str()) {
+                        Ok(Some(newfield)) => Ok(field_value(newfield.as_str(), index, field_type, &value_type, prefix_self)),
                         _ => Err(SynError::new(attr.span(), "'cef_ext_field' should have a single parameter with the field name when used on unnamed fields. Cannot use tuple index as a cef key.".to_owned()).to_compile_error()),
                     },
                 },
@@ -697,37 +697,32 @@ fn top_level_cef_ext_values(attrs: &[Attribute]) -> Vec<TokenStream2> {
     for attr in attrs {
         match attr.path.get_ident().map(|x| x.to_string()).as_deref() {
             None => continue,
-            Some("cef_ext_values") => {
-                match parse_attrs_to_name_value(attr, &CEF_EXT_VALUES_USAGE) {
-                    Err(ts) => retval.push(ts.clone()),
-                    Ok(mnvs) => {
-                        for mnv in mnvs {
-                            match mnv.path.get_ident() {
-                                None => retval.push(
+            Some("cef_ext_values") => match parse_attrs_to_name_value(attr, CEF_EXT_VALUES_USAGE) {
+                Err(ts) => retval.push(ts.clone()),
+                Ok(mnvs) => {
+                    for mnv in mnvs {
+                        match mnv.path.get_ident() {
+                            None => retval.push(
+                                SynError::new(mnv.lit.span(), CEF_EXT_VALUES_USAGE.to_owned())
+                                    .to_compile_error(),
+                            ),
+                            Some(keyident) => match &mnv.lit {
+                                Lit::Str(strval) => {
+                                    let key = keyident.to_string();
+                                    let val = strval.value();
+                                    retval.push(quote! {
+                                        collector.insert(#key.to_owned(), #val.to_owned());
+                                    })
+                                }
+                                _ => retval.push(
                                     SynError::new(mnv.lit.span(), CEF_EXT_VALUES_USAGE.to_owned())
                                         .to_compile_error(),
                                 ),
-                                Some(keyident) => match &mnv.lit {
-                                    Lit::Str(strval) => {
-                                        let key = keyident.to_string();
-                                        let val = strval.value();
-                                        retval.push(quote! {
-                                            collector.insert(#key.to_owned(), #val.to_owned());
-                                        })
-                                    }
-                                    _ => retval.push(
-                                        SynError::new(
-                                            mnv.lit.span(),
-                                            CEF_EXT_VALUES_USAGE.to_owned(),
-                                        )
-                                        .to_compile_error(),
-                                    ),
-                                },
-                            }
+                            },
                         }
                     }
                 }
-            }
+            },
             Some(attr_name) => {
                 if attr_name.starts_with("cef_ext_") {
                     retval.push(

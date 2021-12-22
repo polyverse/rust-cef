@@ -474,7 +474,7 @@ fn header_value_from_child_enum(
     }
 
     // Set CEF value for this header from every variant
-    if let Some(ts) = all_variants_cef_value(header_name, method_name, &e, &mut trait_values) {
+    if let Some(ts) = all_variants_cef_value(header_name, method_name, e, &mut trait_values) {
         return ts;
     }
 
@@ -509,7 +509,7 @@ fn all_variants_cef_value(
     let match_branches_result: CollectedCompileResult = e
         .variants
         .iter()
-        .map(|variant| destructure_and_match_variant(header_name, method_name, &variant))
+        .map(|variant| destructure_and_match_variant(header_name, method_name, variant))
         .collect();
 
     let match_branches: Vec<TokenStream2> = match match_branches_result {
@@ -698,7 +698,7 @@ fn variant_field_value(
                 false => (CEF_FIELD_USAGE.to_owned(), FieldValueType::DisplayTrait),
             };
 
-            match parse_attrs_to_path(&attr, &message) {
+            match parse_attrs_to_path(attr, &message) {
                 Err(e) => return Err(e),
                 Ok(paths) => {
                     for p in paths {
@@ -823,7 +823,7 @@ fn top_level_cef_values(
                 SynError::new(attr.path.span(), CEF_FIELD_APPLICABLE.to_owned()).to_compile_error(),
             );
         } else if attr.path.is_ident("cef_values") {
-            match parse_attrs_to_name_value(attr, &CEF_VALUES_USAGE) {
+            match parse_attrs_to_name_value(attr, CEF_VALUES_USAGE) {
                 Err(ts) => return Some(ts),
                 Ok(mnvs) => {
                     for mnv in mnvs {
