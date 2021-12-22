@@ -105,7 +105,7 @@ fn test_complete_to_cef() {
             age: 87,
         },
         24,
-        OffsetDateTime::from_unix_timestamp_nanos(735027350723000000),
+        OffsetDateTime::from_unix_timestamp_nanos(735027350723000000).unwrap(),
     );
     assert_eq!(
         v1.to_cef().unwrap(),
@@ -148,7 +148,7 @@ fn test_complete_to_cef() {
         },
         severity: 85,
         unused: 20,
-        timestamp: OffsetDateTime::from_unix_timestamp_nanos(9893486324000000),
+        timestamp: OffsetDateTime::from_unix_timestamp_nanos(9893486324000000).unwrap(),
     };
 
     assert_eq!(
